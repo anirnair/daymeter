@@ -1,7 +1,13 @@
 import NumberFlow, { NumberFlowGroup } from "@number-flow/react";
 import { splitDuration } from "../lib/format";
 
-export function DurationHero({ minutes, label }: { minutes: number; label: string }) {
+type Props = {
+  minutes: number;
+  label: string;
+  animated?: boolean;
+};
+
+export function DurationHero({ minutes, label, animated = true }: Props) {
   const { hours, mins, underHour } = splitDuration(minutes);
   return (
     <div className="hero">
@@ -9,14 +15,14 @@ export function DurationHero({ minutes, label }: { minutes: number; label: strin
         <div className="hero-num" aria-label={label}>
           {underHour ? (
             <>
-              <NumberFlow value={mins} />
+              <NumberFlow value={mins} isolate animated={animated} />
               <span className="hero-unit">min</span>
             </>
           ) : (
             <>
-              <NumberFlow value={hours} />
+              <NumberFlow value={hours} isolate animated={animated} />
               <span className="hero-unit">h</span>
-              <NumberFlow value={mins} />
+              <NumberFlow value={mins} isolate animated={animated} />
               <span className="hero-unit">m</span>
             </>
           )}

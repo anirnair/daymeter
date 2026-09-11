@@ -1,10 +1,9 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { DurationHero } from "./components/DurationHero";
 import { DeviceSplit } from "./components/DeviceSplit";
 import { DayStrip } from "./components/DayStrip";
 import { ToolsChart } from "./components/ToolsChart";
 import { PhoneBreakdown } from "./components/PhoneBreakdown";
-import { HourChart } from "./components/HourChart";
 import { loadDaymeter } from "./lib/load";
 import {
   DEVICE_LABEL,
@@ -39,6 +38,7 @@ export default function App() {
   const [day, setDay] = useState<string | "all">("all");
   const [device, setDevice] = useState<DeviceKey | "all">("all");
   const [app, setApp] = useState<string | null>(null);
+  const skipTicker = useRef(true);
 
   useEffect(() => {
     void loadDaymeter().then((loaded) => {
@@ -52,30 +52,50 @@ export default function App() {
     return data.days.length > 1 ? (["all", ...data.days] as const) : data.days;
   }, [data]);
 
+  const daySamples = useMemo(() => (data ? samplesFor(data, day) : []), [data, day]);
+
+  const dayPhone = useMemo(() => {
+    if (!data) return null;
+    return phonesFor(data, day)[0] ?? null;
+  }, [data, day]);
+
   const viewSamples = useMemo(() => {
-    if (!data) return [];
-    let list = samplesFor(data, day);
-    if (device !== "all" && device !== "phone") list = list.filter((s) => s.key === device);
+    let list = daySamples;
+    if (device === "phone") list = [];
+    else if (device !== "all") list = list.filter((s) => s.key === device);
     if (app) list = list.filter((s) => s.app === app);
     return list;
-  }, [data, day, device, app]);
+  }, [daySamples, device, app]);
 
-  const phone = useMemo(() => {
-    if (!data) return null;
-    const reports = phonesFor(data, day);
-    if (device === "mac" || device === "msi") return null;
-    return reports[0] ?? null;
-  }, [data, day, device]);
+  const phone = device === "mac" || device === "msi" ? null : dayPhone;
+
+  const dayMacMin = deviceMinutes(daySamples, "mac");
+  const dayMsiMin = deviceMinutes(daySamples, "msi");
+  const dayPhoneMin = phoneMinutes(dayPhone);
+  const total =
+    device === "mac" ? dayMacMin : device === "msi" ? dayMsiMin : device === "phone" ? dayPhoneMin : dayMacMin + dayMsiMin + dayPhoneMin;
+
+  const dayRef = useRef(day);
+  const dayOrderRef = useRef(dayOrder);
+  dayRef.current = day;
+  dayOrderRef.current = dayOrder;
 
   function shiftDay(delta: number) {
-    const i = dayOrder.indexOf(day);
+    const order = dayOrderRef.current;
+    const i = order.indexOf(dayRef.current);
     if (i < 0) return;
-    const next = dayOrder[i + delta];
+    const next = order[i + delta];
     if (next) {
+      skipTicker.current = true;
       setDay(next);
       setApp(null);
       setDevice("all");
     }
+  }
+
+  function selectDevice(key: DeviceKey | "all") {
+    skipTicker.current = false;
+    setDevice(key);
   }
 
   useEffect(() => {
@@ -83,13 +103,14 @@ export default function App() {
       if (e.key === "ArrowLeft") shiftDay(-1);
       if (e.key === "ArrowRight") shiftDay(1);
       if (e.key === "Escape") {
+        skipTicker.current = false;
         setApp(null);
         setDevice("all");
       }
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  });
+  }, []);
 
   if (!data) {
     return (
@@ -100,23 +121,23 @@ export default function App() {
     );
   }
 
-  const macMin = deviceMinutes(viewSamples, "mac");
-  const msiMin = deviceMinutes(viewSamples, "msi");
-  const phoneMin = device === "mac" || device === "msi" ? 0 : phoneMinutes(phone);
-  const total = macMin + msiMin + phoneMin;
+  const macMinSlice = device === "all" || device === "mac" ? dayMacMin : 0;
+  const msiMinSlice = device === "all" || device === "msi" ? dayMsiMin : 0;
+  const phoneMinSlice = device === "all" || device === "phone" ? dayPhoneMin : 0;
   const shareTotal = Math.max(total, 0.001);
   const i = dayOrder.indexOf(day);
-  const tools = appMinutes(viewSamples.filter((s) => device === "all" || s.key === device));
+  const tools = appMinutes(viewSamples);
+  const jumpSource = device === "phone" ? daySamples : viewSamples;
   const computerJumps = (["mac", "msi"] as const).map((key) => {
-    const list = viewSamples.filter((s) => s.key === key);
-    return { name: DEVICE_LABEL[key], jumps: Math.round(jumpsPerHour(list)), tone: key };
+    const list = jumpSource.filter((s) => s.key === key);
+    return { name: DEVICE_LABEL[key], jumps: Math.round(jumpsPerHour(list)), tone: key } as const;
   });
 
-  const macLooks = viewSamples.filter((s) => s.key === "mac").length;
-  const msiLooks = viewSamples.filter((s) => s.key === "msi").length;
+  const macLooks = daySamples.filter((s) => s.key === "mac").length;
+  const msiLooks = daySamples.filter((s) => s.key === "msi").length;
   const showPhoneSection = Boolean(phone && (device === "all" || device === "phone"));
-  const showStrip = viewSamples.length > 0 && device !== "phone";
-  const showTools = tools.length > 0 && device !== "phone";
+  const showStrip = viewSamples.length > 0;
+  const showTools = tools.length > 0;
 
   return (
     <div className="shell">
@@ -144,35 +165,39 @@ export default function App() {
         </button>
       </div>
 
-      <DurationHero minutes={total} label={`${prettyDuration(total)} screen time`} />
+      <DurationHero
+        minutes={total}
+        label={`${prettyDuration(total)} screen time`}
+        animated={!skipTicker.current}
+      />
 
       <div className="share" aria-hidden="true">
-        {macMin > 0 && <i className="mac" style={{ width: `${(macMin / shareTotal) * 100}%` }} />}
-        {msiMin > 0 && <i className="msi" style={{ width: `${(msiMin / shareTotal) * 100}%` }} />}
-        {phoneMin > 0 && <i className="phone" style={{ width: `${(phoneMin / shareTotal) * 100}%` }} />}
+        <i className="mac" style={{ width: `${(macMinSlice / shareTotal) * 100}%` }} />
+        <i className="msi" style={{ width: `${(msiMinSlice / shareTotal) * 100}%` }} />
+        <i className="phone" style={{ width: `${(phoneMinSlice / shareTotal) * 100}%` }} />
       </div>
 
       <DeviceSplit
         selected={device}
-        onSelect={setDevice}
+        onSelect={selectDevice}
         cards={[
           {
             key: "mac",
-            minutes: macMin,
+            minutes: dayMacMin,
             available: macLooks > 0,
             meta: macLooks ? `${macLooks} look${macLooks === 1 ? "" : "s"}` : "no looks",
           },
           {
             key: "msi",
-            minutes: msiMin,
+            minutes: dayMsiMin,
             available: msiLooks > 0,
             meta: msiLooks ? `${msiLooks} look${msiLooks === 1 ? "" : "s"}` : "no looks",
           },
           {
             key: "phone",
-            minutes: phoneMin,
-            available: Boolean(phone),
-            meta: phone?.switches != null ? `${phone.switches} jumps` : phone ? "reported" : "no report",
+            minutes: dayPhoneMin,
+            available: Boolean(dayPhone),
+            meta: dayPhone?.switches != null ? `${dayPhone.switches} jumps` : dayPhone ? "reported" : "no report",
           },
         ]}
       />
@@ -185,7 +210,6 @@ export default function App() {
             deviceFilter={device}
             appFilter={app}
           />
-          <HourChart samples={viewSamples} />
         </section>
       )}
 

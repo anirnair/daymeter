@@ -23,7 +23,7 @@ export function ToolsChart({ rows, selected, onSelect, maxMinutes }: Props) {
   return (
     <div>
       {rows.map((row) => {
-        const tone = row.devices.length > 1 ? "mix" : row.devices[0];
+        const tone = row.devices[0];
         const width = `${Math.max(4, (row.minutes / max) * 100)}%`;
         const deviceLine = row.devices.map((d) => DEVICE_LABEL[d]).join(" and ");
         return (

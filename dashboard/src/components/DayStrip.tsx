@@ -27,7 +27,9 @@ export function DayStrip({ samples, deviceFilter, appFilter }: Props) {
           <span key={t}>{prettyHourTick(t)}</span>
         ))}
       </div>
-      {lanes.map((key) => {
+      {lanes
+        .filter((key) => samples.some((s) => s.key === key))
+        .map((key) => {
         const marks = samples.filter((s) => s.key === key);
         return (
           <div className="lane" key={key}>
@@ -42,6 +44,7 @@ export function DayStrip({ samples, deviceFilter, appFilter }: Props) {
                 return (
                   <FloatCard
                     key={s.id}
+                    side="bottom"
                     title={prettyApp(s.app)}
                     lines={[
                       `${DEVICE_LABEL[s.key]} · ${prettyTime(s.ts)}`,
@@ -49,11 +52,10 @@ export function DayStrip({ samples, deviceFilter, appFilter }: Props) {
                       `look ${index} of ${total} for this app`,
                     ]}
                   >
-                    <div
+                    <button
+                      type="button"
                       className={clsx("mark", s.key, dim && "dimmed")}
                       style={{ left: `calc(${left}% - 5px)` }}
-                      role="button"
-                      tabIndex={0}
                       aria-label={`${prettyApp(s.app)} on ${DEVICE_LABEL[s.key]} at ${prettyTime(s.ts)}, ${prettyDuration(s.minutes)}`}
                     />
                   </FloatCard>

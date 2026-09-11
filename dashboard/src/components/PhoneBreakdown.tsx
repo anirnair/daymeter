@@ -22,8 +22,8 @@ export function PhoneBreakdown({ phone, computerJumps }: Props) {
     : 0;
   const rows: JumpRow[] = [
     ...computerJumps,
-    { name: "Phone", jumps: phoneJumps, tone: "phone" },
-  ];
+    { name: "Phone", jumps: phoneJumps, tone: "phone" as const },
+  ].filter((row) => row.jumps > 0);
   const max = Math.max(...rows.map((r) => r.jumps), 1);
 
   return (
@@ -33,6 +33,7 @@ export function PhoneBreakdown({ phone, computerJumps }: Props) {
         {phone.switches != null ? ` · ${phone.switches} jumps` : ""}
         {every != null ? ` · about every ${every} seconds` : ""}
       </div>
+      {rows.length > 0 && (
       <div className="section" style={{ gap: 8 }}>
         <h2>jumps per hour</h2>
         {rows.map((row) => (
@@ -49,7 +50,7 @@ export function PhoneBreakdown({ phone, computerJumps }: Props) {
               <span className="bar-track">
                 <span
                   className={clsx("bar-fill", row.tone)}
-                  style={{ width: `${Math.max(4, (row.jumps / max) * 100)}%` }}
+                  style={{ width: `${row.jumps <= 0 ? 0 : Math.max(4, (row.jumps / max) * 100)}%` }}
                 />
               </span>
               <span className="bar-n">{row.jumps}/hr</span>
@@ -57,6 +58,7 @@ export function PhoneBreakdown({ phone, computerJumps }: Props) {
           </FloatCard>
         ))}
       </div>
+      )}
       <div className="section" style={{ gap: 8 }}>
         <h2>apps in the mix</h2>
         {phone.top.map((app) => (
@@ -73,12 +75,6 @@ export function PhoneBreakdown({ phone, computerJumps }: Props) {
           >
             <button type="button" className="phone-app">
               <span className="name">{prettyApp(app)}</span>
-              <span className="bar-track">
-                <span
-                  className="bar-fill phone"
-                  style={{ width: `${100 / Math.max(phone.top.length, 1)}%` }}
-                />
-              </span>
               <span className="bar-n">in the mix</span>
             </button>
           </FloatCard>

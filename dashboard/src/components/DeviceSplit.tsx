@@ -1,5 +1,5 @@
 import clsx from "clsx";
-import { LayoutGroup, motion } from "motion/react";
+import { LayoutGroup, motion, useReducedMotion } from "motion/react";
 import { DEVICE_LABEL, prettyDuration } from "../lib/format";
 import type { DeviceKey } from "../lib/types";
 
@@ -17,6 +17,8 @@ type Props = {
 };
 
 export function DeviceSplit({ cards, selected, onSelect }: Props) {
+  const reduceMotion = useReducedMotion();
+
   return (
     <LayoutGroup>
       <div className="devices">
@@ -30,13 +32,16 @@ export function DeviceSplit({ cards, selected, onSelect }: Props) {
             disabled={!card.available}
             onClick={() => onSelect(selected === card.key ? "all" : card.key)}
           >
-            {selected === card.key && (
-              <motion.span
-                className="sel"
-                layoutId="device-sel"
-                transition={{ duration: 0.2, ease: [0.23, 1, 0.32, 1] }}
-              />
-            )}
+            {selected === card.key &&
+              (reduceMotion ? (
+                <span className="sel" />
+              ) : (
+                <motion.span
+                  className="sel"
+                  layoutId="device-sel"
+                  transition={{ duration: 0.2, ease: [0.23, 1, 0.32, 1] }}
+                />
+              ))}
             <div className="kicker">{DEVICE_LABEL[card.key]}</div>
             <div className="time">{card.available ? prettyDuration(card.minutes) : "—"}</div>
             <div className="meta">{card.meta}</div>

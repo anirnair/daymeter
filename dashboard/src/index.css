@@ -28,7 +28,8 @@ html {
 
 body {
   font: 13px/1.45 "IBM Plex Mono", ui-monospace, monospace;
-  font-variant-numeric: tabular-nums;
+  font-optical-sizing: auto;
+  font-variant-numeric: tabular-nums slashed-zero;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   text-rendering: optimizeLegibility;
@@ -108,10 +109,14 @@ button:disabled {
   transform: scale(0.97);
 }
 
-@media (hover: hover) {
+@media (hover: hover) and (pointer: fine) {
   .nav-btn:not(:disabled):hover {
     color: var(--ink);
     border-color: rgba(255, 255, 255, 0.22);
+  }
+
+  .dev-card:not(:disabled):hover {
+    border-color: rgba(255, 255, 255, 0.2);
   }
 }
 
@@ -166,15 +171,7 @@ button:disabled {
 .share i {
   display: block;
   height: 100%;
-  transform-origin: left center;
-  transform: scaleX(1);
-  transition: transform 200ms var(--ease-out);
-}
-
-.share i {
-  @starting-style {
-    transform: scaleX(0);
-  }
+  min-width: 0;
 }
 
 .share .mac { background: var(--mac); }
@@ -210,6 +207,10 @@ button:disabled {
 
 .dev-card:active {
   transform: scale(0.97);
+}
+
+.dev-card[aria-pressed="true"] {
+  border-color: rgba(255, 255, 255, 0.28);
 }
 
 .dev-card .sel {
@@ -256,51 +257,6 @@ button:disabled {
   letter-spacing: 0.06em;
 }
 
-.hours {
-  display: flex;
-  align-items: flex-end;
-  gap: 6px;
-  height: 72px;
-}
-
-.hours button {
-  flex: 1;
-  min-width: 0;
-  height: 100%;
-  display: flex;
-  flex-direction: column;
-  justify-content: flex-end;
-  align-items: center;
-  gap: 6px;
-  position: relative;
-  transition: transform 160ms var(--ease-out);
-}
-
-.hours button:active {
-  transform: scale(0.97);
-}
-
-.hours .col {
-  width: 100%;
-  background: var(--mute);
-  display: flex;
-  flex-direction: column-reverse;
-  min-height: 4px;
-}
-
-.hours .seg {
-  width: 100%;
-  flex: 1 1 auto;
-}
-
-.hours .seg.mac { background: var(--mac); }
-.hours .seg.msi { background: var(--msi); }
-
-.hours .hlab {
-  color: var(--dim);
-  font-size: 10px;
-}
-
 .strip {
   display: flex;
   flex-direction: column;
@@ -339,12 +295,18 @@ button:disabled {
 }
 
 .mark {
+  appearance: none;
   position: absolute;
   top: 2px;
   bottom: 2px;
   width: 10px;
   cursor: pointer;
   touch-action: manipulation;
+  transition: transform 160ms var(--ease-out);
+}
+
+.mark:active {
+  transform: scale(0.97);
 }
 
 .mark::before {
@@ -371,6 +333,10 @@ button:disabled {
   color: inherit;
   padding: 4px 0;
   transition: transform 160ms var(--ease-out);
+}
+
+.phone-app {
+  grid-template-columns: minmax(0, 1fr) auto;
 }
 
 .tool-row::before,
@@ -404,6 +370,7 @@ button:disabled {
 }
 
 .bar-fill {
+  display: block;
   height: 100%;
   transform-origin: left center;
   transform: scaleX(1);
@@ -412,14 +379,13 @@ button:disabled {
 
 .bar-fill {
   @starting-style {
-    transform: scaleX(0);
+    transform: scaleX(0.02);
   }
 }
 
 .bar-fill.mac { background: var(--mac); }
 .bar-fill.msi { background: var(--msi); }
 .bar-fill.phone { background: var(--phone); }
-.bar-fill.mix { background: linear-gradient(90deg, var(--mac), var(--msi)); }
 
 .bar-n {
   color: var(--dim);
@@ -440,8 +406,8 @@ button:disabled {
   min-width: 176px;
   max-width: 240px;
   box-shadow:
-    0 0 0 1px rgba(255, 255, 255, 0.03),
-    0 10px 28px rgba(0, 0, 0, 0.48);
+    0 0 0 1px rgba(255, 255, 255, 0.04),
+    0 10px 28px rgba(18, 18, 18, 0.55);
   transform-origin: var(--transform-origin);
   transition:
     transform 125ms var(--ease-out),
@@ -484,12 +450,38 @@ button:disabled {
   .dev-card .time { margin-top: 0; }
   .lane { grid-template-columns: 44px minmax(0, 1fr); }
   .ticks { padding-left: 44px; }
-  .tool-row, .phone-app { grid-template-columns: minmax(72px, 28%) minmax(0, 1fr) auto; }
+  .tool-row { grid-template-columns: minmax(72px, 28%) minmax(0, 1fr) auto; }
+  .phone-app { grid-template-columns: minmax(0, 1fr) auto; }
 }
 
 @media (prefers-reduced-motion: reduce) {
-  *, *::before, *::after {
-    transition-duration: 0.01ms !important;
-    animation-duration: 0.01ms !important;
+  .nav-btn,
+  .dev-card,
+  .mark,
+  .tool-row,
+  .phone-app,
+  .bar-fill {
+    transition: none;
+  }
+
+  .nav-btn:not(:disabled):active,
+  .dev-card:active,
+  .mark:active,
+  .tool-row:active,
+  .phone-app:active {
+    transform: none;
+  }
+
+  .bar-fill {
+    transform: none;
+  }
+
+  .float-card {
+    transition: opacity 80ms ease;
+  }
+
+  .float-card[data-starting-style],
+  .float-card[data-ending-style] {
+    transform: none;
   }
 }
