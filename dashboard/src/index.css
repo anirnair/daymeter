@@ -1,3 +1,11 @@
+@font-face {
+  font-family: "Departure Mono";
+  src: url("/fonts/DepartureMono-Regular.woff2") format("woff2");
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
 :root {
   --bg: #0e0e0e;
   --ink: #f0f0f0;
@@ -9,6 +17,10 @@
   --phone: #8a8498;
   --hot: #f0a070;
   --card: #141414;
+  --font: "Departure Mono", ui-monospace, monospace;
+  --fs: 11px;
+  --fs-2: 22px;
+  --fs-4: 44px;
   --ease-out: cubic-bezier(0.23, 1, 0.32, 1);
   --ease-in-out: cubic-bezier(0.77, 0, 0.175, 1);
 }
@@ -24,18 +36,21 @@ html, body, #root {
 
 html {
   -webkit-text-size-adjust: 100%;
+  font-synthesis: none;
 }
 
 body {
-  font: 13px/1.45 "IBM Plex Mono", ui-monospace, monospace;
-  font-optical-sizing: auto;
-  font-variant-numeric: tabular-nums slashed-zero;
+  font-family: var(--font);
+  font-size: var(--fs);
+  font-weight: 400;
+  line-height: 22px;
+  font-variant-numeric: tabular-nums;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   text-rendering: optimizeLegibility;
-  padding: 28px 20px 48px;
-  padding-left: max(20px, env(safe-area-inset-left));
-  padding-right: max(20px, env(safe-area-inset-right));
+  padding: 22px 22px 44px;
+  padding-left: max(22px, env(safe-area-inset-left));
+  padding-right: max(22px, env(safe-area-inset-right));
 }
 
 ::selection {
@@ -45,6 +60,7 @@ body {
 
 button {
   font: inherit;
+  font-family: inherit;
   color: inherit;
   background: none;
   border: 0;
@@ -71,7 +87,7 @@ button:disabled {
 .brand {
   color: var(--dim);
   letter-spacing: 0.08em;
-  font-size: 11px;
+  font-size: var(--fs);
 }
 
 .day-picker {
@@ -84,10 +100,10 @@ button:disabled {
 
 .day-picker .day {
   text-align: center;
-  font-size: clamp(18px, 3.2vw, 22px);
-  font-weight: 500;
+  font-size: var(--fs-2);
+  font-weight: 400;
   text-wrap: balance;
-  line-height: 1.25;
+  line-height: 22px;
 }
 
 .nav-btn {
@@ -138,26 +154,33 @@ button:disabled {
 }
 
 .hero-num {
-  font-size: clamp(40px, 8vw, 56px);
-  font-weight: 500;
-  letter-spacing: -0.03em;
-  line-height: 1;
+  font-size: var(--fs-4);
+  font-weight: 400;
+  letter-spacing: 0;
+  line-height: 44px;
   display: flex;
   align-items: baseline;
   justify-content: center;
-  gap: 0.08em;
+  gap: 11px;
+  font-family: var(--font);
+}
+
+number-flow-react {
+  font-family: inherit;
+  font-variant-numeric: tabular-nums;
 }
 
 .hero-unit {
-  font-size: 0.42em;
+  font-size: var(--fs-2);
   color: var(--dim);
   font-weight: 400;
   letter-spacing: 0;
+  line-height: 22px;
 }
 
 .hero-lab {
   color: var(--dim);
-  font-size: 12px;
+  font-size: var(--fs);
 }
 
 .share {
@@ -221,7 +244,7 @@ button:disabled {
 }
 
 .dev-card .kicker {
-  font-size: 11px;
+  font-size: var(--fs);
   color: var(--dim);
 }
 
@@ -230,14 +253,15 @@ button:disabled {
 .dev-card.phone .kicker { color: var(--phone); }
 
 .dev-card .time {
-  font-size: 18px;
-  font-weight: 500;
+  font-size: var(--fs-2);
+  font-weight: 400;
   margin-top: 4px;
+  line-height: 22px;
 }
 
 .dev-card .meta {
   color: var(--dim);
-  font-size: 11px;
+  font-size: var(--fs);
   margin-top: 2px;
 }
 
@@ -251,7 +275,7 @@ button:disabled {
 .section h2 {
   margin: 0;
   text-align: center;
-  font-size: 11px;
+  font-size: var(--fs);
   font-weight: 400;
   color: var(--dim);
   letter-spacing: 0.06em;
@@ -267,7 +291,7 @@ button:disabled {
   display: flex;
   justify-content: space-between;
   color: var(--dim);
-  font-size: 11px;
+  font-size: var(--fs);
   padding-left: 52px;
 }
 
@@ -280,7 +304,7 @@ button:disabled {
 
 .lane .lab {
   color: var(--dim);
-  font-size: 12px;
+  font-size: var(--fs);
 }
 
 .lane .lab.mac { color: var(--mac); }
@@ -389,7 +413,7 @@ button:disabled {
 
 .bar-n {
   color: var(--dim);
-  font-size: 11px;
+  font-size: var(--fs);
   white-space: nowrap;
 }
 
@@ -426,25 +450,25 @@ button:disabled {
 }
 
 .float-card .title {
-  font-weight: 500;
+  font-weight: 400;
   margin-bottom: 2px;
 }
 
 .float-card .row {
   color: var(--dim);
-  font-size: 12px;
+  font-size: var(--fs);
 }
 
 .foot {
   color: var(--dim);
-  font-size: 11px;
+  font-size: var(--fs);
   text-align: center;
 }
 
 .hidden { display: none; }
 
 @media (max-width: 640px) {
-  body { padding: 18px 14px 36px; }
+  body { padding: 22px 11px 33px; }
   .devices { grid-template-columns: 1fr; }
   .dev-card { min-height: 76px; flex-direction: row; justify-content: space-between; text-align: left; padding: 12px 14px; }
   .dev-card .time { margin-top: 0; }

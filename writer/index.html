@@ -4,16 +4,43 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Daymeter Writer</title>
+  <link rel="preload" href="/fonts/DepartureMono-Regular.woff2" as="font" type="font/woff2" crossorigin />
   <style>
+    @font-face {
+      font-family: "Departure Mono";
+      src: url("/fonts/DepartureMono-Regular.woff2") format("woff2");
+      font-weight: 400;
+      font-style: normal;
+      font-display: swap;
+    }
     :root { color-scheme: dark; }
-    html, body { margin: 0; min-height: 100%; background: #111; color: #e8e6e1; font-family: system-ui, sans-serif; }
-    main { min-height: 100dvh; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 32px 24px; box-sizing: border-box; }
-    h1 { margin: 0; font-size: 1.5rem; letter-spacing: 0.04em; }
-    p { margin: 10px 0 28px; color: #8a8680; text-align: center; max-width: 22rem; line-height: 1.4; }
+    html, body {
+      margin: 0;
+      min-height: 100%;
+      background: #111;
+      color: #e8e6e1;
+      font-family: "Departure Mono", ui-monospace, monospace;
+      font-size: 11px;
+      font-weight: 400;
+      line-height: 22px;
+      font-synthesis: none;
+      -webkit-font-smoothing: antialiased;
+    }
+    main {
+      min-height: 100dvh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 33px 22px;
+      box-sizing: border-box;
+    }
+    h1 { margin: 0; font-size: 22px; font-weight: 400; letter-spacing: 0.04em; line-height: 22px; }
+    p { margin: 11px 0 22px; color: #8a8680; text-align: center; max-width: 22rem; line-height: 22px; }
     a.download {
-      display: block; width: min(100%, 22rem); padding: 18px 20px; text-align: center;
-      background: #e8e6e1; color: #111; text-decoration: none; font-weight: 700; font-size: 1.1rem;
-      border-radius: 8px;
+      display: block; width: min(100%, 22rem); padding: 22px 22px; text-align: center;
+      background: #e8e6e1; color: #111; text-decoration: none; font-weight: 400; font-size: 22px;
+      line-height: 22px;
     }
   </style>
 </head>
