@@ -10,7 +10,7 @@ This GitHub repo is the durable home for that picture: what it is, the design ch
 
 | What | Link that stays on | What you’ll see |
 | --- | --- | --- |
-| **The day strip** | [daymeter.vercel.app](https://daymeter.vercel.app) | Marks on a day, from 6:00 to midnight. Hover or tap a mark for time, machine, and app. |
+| **The day dashboard** | [daymeter.vercel.app](https://daymeter.vercel.app) | Total screen time, device split, the evening strip, tools. Hover a mark for the floating card. |
 | **Phone Writer** | [daymeter-writer.vercel.app](https://daymeter-writer.vercel.app) | A one-button page. Open it **on the phone**, tap Download, install the app. |
 
 Those two don’t use numbered Origin session names, so they keep running when a session ends.
@@ -23,19 +23,17 @@ Phone install is sideload (not Play Store). The only permission it asks for is *
 
 ## What you’re looking at
 
-The strip is not a calendar, not a timesheet, and not a productivity grade.
+A centered dashboard of the day, not a timesheet or a score.
 
-**Two computer lanes.** Mac is the warm gold. MSI is the teal. Each little rectangle is a real look: “at this minute, this app was in front.” They are samples, not a continuous recording. A gap is missing looks, not proof you were idle.
+**The date sits in the middle** — written in plain language, like 11 September 2026.
 
-**Phone is a different kind of line.** It does not sit in the same sample stream. When Writer has actually sent a report, a phone lane/tab appears with hours used and the apps that showed up. Until then, phone stays hidden. No fake bar.
+**Screen time is the number at the top.** It is the sum across Mac, MSI, and Phone. Computer time is estimated from how long an app stayed in front between looks. Phone time is what Writer reported. Hover any mark, bar, or device card for the nitty-gritty.
 
-**Night note.** A one-line reading of the day, written later. If it isn’t there yet, the strip says it’s waiting. It does not invent a sentence.
+**Three device cards** sit under that number: Mac (gold), MSI (teal), Phone (muted purple). Tap one to slice the rest of the page.
 
-**The attention line** (desktop). It talks in plain weather — steady, busy, high churn — from how often the frontmost app changed. The copy is explicit: *not a productivity score*.
+**The strip** is still the evening picture: hard rectangles on two lanes. A gap is a missing look, not idle time.
 
-**Density stairs** only appear when the day is dense enough (a dozen real samples). Thin days stay thin. No mountain of lights to fill empty hours.
-
-On a phone-sized screen the strip stays even quieter: overview only, no extra machine tabs, no shared-app list.
+**Tools** break down the apps. Phone has its own section because you jump more there — hours, jump rate against the computers, and the apps in the mix (Writer does not yet split phone time per app).
 
 ---
 
