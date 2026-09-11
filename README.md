@@ -1,1 +1,84 @@
-# daymeter
+# Daymeter
+
+A quiet picture of **where attention sat across a day** — Mac, Windows laptop (MSI), and phone — without turning it into a score.
+
+This GitHub repo is the durable home for that picture: what it is, how to open the latest builds, and the product choices that stuck after a day of Origin sessions. The live experiments still live on Vercel; the links below are the ones to use.
+
+---
+
+## Open it
+
+| What | Latest link | What you’ll see |
+| --- | --- | --- |
+| **The day strip** | [daymeter-dashboard11.vercel.app](https://daymeter-dashboard11.vercel.app) | Marks on a day, from 6:00 to midnight. Hover or tap a mark for time, machine, and app. |
+| **Phone Writer** | [daymeter-writer-apk4.vercel.app](https://daymeter-writer-apk4.vercel.app) | A one-button page. Open it **on the phone**, tap Download, install the app. |
+
+Phone install is sideload (not Play Store). The only permission it asks for is **Usage access** — Android’s “which apps did I use” setting. After install, open Writer and tap **Run once**. That first tap is what lets it send a day-summary to the strip.
+
+---
+
+## What you’re looking at
+
+The strip is not a calendar, not a timesheet, and not a productivity grade.
+
+**Two computer lanes.** Mac is the warm gold. MSI is the teal. Each little rectangle is a real look: “at this minute, this app was in front.” They are samples, not a continuous recording. A gap is missing looks, not proof you were idle.
+
+**Phone is a different kind of line.** It does not sit in the same sample stream. When Writer has actually sent a report, a phone lane/tab appears with hours used and the apps that showed up. Until then, phone stays hidden. No fake bar.
+
+**Night note.** A one-line reading of the day, written later. If it isn’t there yet, the strip says it’s waiting. It does not invent a sentence.
+
+**The attention line** (desktop). It talks in plain weather — steady, busy, high churn — from how often the frontmost app changed. The copy is explicit: *not a productivity score*.
+
+**Density stairs** only appear when the day is dense enough (a dozen real samples). Thin days stay thin. No mountain of lights to fill empty hours.
+
+On a phone-sized screen the strip stays even quieter: overview only, no extra machine tabs, no shared-app list.
+
+---
+
+## How a day gets into the picture
+
+1. **Mac and MSI** quietly note the frontmost app every so often. Those looks become the gold and teal marks.
+2. **Phone** is not sampled the same way. Writer sends a *reported* summary (hours, top apps, how often you switched).
+3. Both land on the same day strip. Phone is never mixed into the computer marks so you can still tell “we looked” from “the phone told us.”
+
+Browser tabs and exact URLs are **not collected yet** on either computer. That’s an honest hole, called out on the machine views.
+
+---
+
+## Design rules that stuck
+
+These came out of the Origin cuts (named Fae, Indigo, craft lock). They’re the product, not decoration:
+
+- **Don’t costume the day.** No fake second day so the arrows look alive. Prev/next wait for another *real* day.
+- **Don’t invent continuity.** Marks are hard rectangles. Blanks stay blank. Stairs don’t pack empty hours into a fake slope.
+- **Color lives on the lane names**, not a rainbow legend.
+- **Phone stays offstage** until a real report exists.
+- **Mobile is a smaller instrument**, not a squeezed desktop.
+- **You can slice** (Mac only, MSI only, one app, both awake) without turning the strip into a dashboard of charts.
+- **Night note waits.** It does not auto-write.
+
+Things that got tried and put back: a “LED mountain” denseness graphic, a rainbow legend, filling the phone lane before anything was reported.
+
+---
+
+## Where things stand
+
+*As of late 11 Sep / early 12 Sep 2026, India time.*
+
+The strip has **one real computer day** (11 Sep, evening): a handful of looks, mostly Grok Bot on Mac and Chrome on MSI. That is a thin day on purpose — the stairs stay off.
+
+**Writer sent its first phone line overnight.** About a quarter-hour of use, with launcher, WhatsApp, Instagram, Swiggy, and phone manager in the mix, and a lot of app switches. Because it arrived after midnight, it sits on **12 Sep**, not on the 11 Sep computer day. The two days are not merged.
+
+The **night note is still empty**.
+
+The latest Writer build exists because the previous one could crash if you opened it cold. This one waits until you tap **Run once**, then it is allowed to send.
+
+---
+
+## What this repo is (and isn’t)
+
+This is the **product memory**: the idea, the rules, the live links, and how the Origin sessions moved.
+
+It is not yet the place the live strip is built from. Those experiments still sit in Cursor Origin (dashboard and Writer are separate workspaces) and publish to the Vercel links above. Older numbered URLs (`dashboard`, `dashboard2` … `dashboard10`, `writer-apk` … `writer-apk3`) are earlier takes — useful if you want to see a cut, not for daily use.
+
+A fuller session-by-session walk, still in plain language: [context/origin-sessions.md](context/origin-sessions.md).
