@@ -38,7 +38,7 @@ export default function App() {
   const [day, setDay] = useState<string | "all">("all");
   const [device, setDevice] = useState<DeviceKey | "all">("all");
   const [app, setApp] = useState<string | null>(null);
-  const skipTicker = useRef(true);
+  const [animateHero, setAnimateHero] = useState(false);
 
   useEffect(() => {
     void loadDaymeter().then((loaded) => {
@@ -86,7 +86,7 @@ export default function App() {
     if (i < 0) return;
     const next = order[i + delta];
     if (next) {
-      skipTicker.current = true;
+      setAnimateHero(false);
       setDay(next);
       setApp(null);
       setDevice("all");
@@ -94,7 +94,7 @@ export default function App() {
   }
 
   function selectDevice(key: DeviceKey | "all") {
-    skipTicker.current = false;
+    setAnimateHero(true);
     setDevice(key);
   }
 
@@ -103,7 +103,7 @@ export default function App() {
       if (e.key === "ArrowLeft") shiftDay(-1);
       if (e.key === "ArrowRight") shiftDay(1);
       if (e.key === "Escape") {
-        skipTicker.current = false;
+        setAnimateHero(false);
         setApp(null);
         setDevice("all");
       }
@@ -168,7 +168,7 @@ export default function App() {
       <DurationHero
         minutes={total}
         label={`${prettyDuration(total)} screen time`}
-        animated={!skipTicker.current}
+        animated={animateHero}
       />
 
       <div className="share" aria-hidden="true">
