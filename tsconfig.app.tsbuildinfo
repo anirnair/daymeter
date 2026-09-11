@@ -1,0 +1,1 @@
+{"root":["./src/App.tsx","./src/main.tsx","./src/components/MeterCard.test.tsx","./src/components/MeterCard.tsx","./src/lib/dayMetrics.test.ts","./src/lib/dayMetrics.ts","./src/test/setup.ts"],"version":"5.9.3"}

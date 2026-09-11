@@ -1,0 +1,115 @@
+.app {
+  max-width: 960px;
+  margin: 0 auto;
+  padding: clamp(1.5rem, 4vw, 4rem) 1.25rem 3rem;
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+}
+
+.app__header {
+  text-align: center;
+  margin-bottom: clamp(1.5rem, 4vw, 3rem);
+}
+
+.app__brand {
+  display: inline-block;
+  text-transform: lowercase;
+  letter-spacing: 0.35em;
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: #a5b4fc;
+  padding: 0.3rem 0.9rem;
+  border: 1px solid rgba(165, 180, 252, 0.35);
+  border-radius: 999px;
+  background: rgba(99, 102, 241, 0.08);
+}
+
+.app__clock {
+  font-size: clamp(2.75rem, 10vw, 5rem);
+  font-weight: 700;
+  margin: 1rem 0 0.25rem;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.02em;
+  background: linear-gradient(120deg, #ffffff, #c7d2fe 55%, #f9a8d4);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+.app__date {
+  margin: 0;
+  color: #9aa3b8;
+  font-size: clamp(0.95rem, 2.5vw, 1.15rem);
+}
+
+.app__grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 1.1rem;
+}
+
+.meter {
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 18px;
+  padding: 1.35rem 1.4rem;
+  backdrop-filter: blur(8px);
+  transition: transform 0.2s ease, border-color 0.2s ease;
+}
+
+.meter:hover {
+  transform: translateY(-3px);
+  border-color: rgba(165, 180, 252, 0.4);
+}
+
+.meter__top {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  margin-bottom: 0.9rem;
+}
+
+.meter__label {
+  margin: 0;
+  font-size: 1.05rem;
+  font-weight: 600;
+  color: #e6e8ef;
+}
+
+.meter__percent {
+  font-size: 1.15rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  color: #a5b4fc;
+}
+
+.meter__track {
+  height: 12px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.08);
+  overflow: hidden;
+}
+
+.meter__fill {
+  height: 100%;
+  border-radius: 999px;
+  background: linear-gradient(90deg, #6366f1, #ec4899);
+  transition: width 0.5s cubic-bezier(0.22, 1, 0.36, 1);
+  box-shadow: 0 0 12px rgba(236, 72, 153, 0.5);
+}
+
+.meter__remaining {
+  margin: 0.85rem 0 0;
+  font-size: 0.9rem;
+  color: #9aa3b8;
+  font-variant-numeric: tabular-nums;
+}
+
+.app__footer {
+  margin-top: auto;
+  padding-top: 2.5rem;
+  text-align: center;
+  color: #6b7280;
+  font-size: 0.85rem;
+}
