@@ -8,10 +8,14 @@ This GitHub repo is the durable home for that picture: what it is, the design ch
 
 ## Open it
 
-| What | Latest link | What you’ll see |
+| What | Link that stays on | What you’ll see |
 | --- | --- | --- |
-| **The day strip** | [daymeter-dashboard11.vercel.app](https://daymeter-dashboard11.vercel.app) | Marks on a day, from 6:00 to midnight. Hover or tap a mark for time, machine, and app. |
-| **Phone Writer** | [daymeter-writer-apk4.vercel.app](https://daymeter-writer-apk4.vercel.app) | A one-button page. Open it **on the phone**, tap Download, install the app. |
+| **The day strip** | [daymeter.vercel.app](https://daymeter.vercel.app) | Marks on a day, from 6:00 to midnight. Hover or tap a mark for time, machine, and app. |
+| **Phone Writer** | [daymeter-writer.vercel.app](https://daymeter-writer.vercel.app) | A one-button page. Open it **on the phone**, tap Download, install the app. |
+
+Those two don’t use numbered Origin session names, so they keep running when a session ends.
+
+The phone app that’s already installed still talks to the Origin strip at [daymeter-dashboard11.vercel.app](https://daymeter-dashboard11.vercel.app) (Writer send goes through take 9, then shows up there). Leave those up. Same download file also lives at [daymeter-writer-apk4.vercel.app](https://daymeter-writer-apk4.vercel.app).
 
 Phone install is sideload (not Play Store). The only permission it asks for is **Usage access** — Android’s “which apps did I use” setting. After install, open Writer and tap **Run once**. That first tap is what lets it send a day-summary to the strip.
 
