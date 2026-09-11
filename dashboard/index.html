@@ -1,0 +1,1035 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <title>daymeter</title>
+  <meta name="daymeter-built" content="2026-09-11 23:59 IST" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --bg: #0e0e0e;
+      --ink: #f0f0f0;
+      --dim: #7a7a7a;
+      --mute: #2a2a2a;
+      --mac: #c4a06a;
+      --msi: #6aaba0;
+      --phone: #8a8498;
+      --hot: #f0a070;
+    }
+    * { box-sizing: border-box; }
+    html, body {
+      margin: 0;
+      min-height: 100%;
+      background: var(--bg);
+      color: var(--ink);
+      font: 12px/1.45 "IBM Plex Mono", ui-monospace, monospace;
+      font-variant-numeric: tabular-nums;
+    }
+    body {
+      padding: 14px 12px 28px;
+      padding-left: max(12px, env(safe-area-inset-left));
+      padding-right: max(12px, env(safe-area-inset-right));
+      max-width: 920px;
+      margin: 0 auto;
+    }
+    .hdr {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: space-between;
+      gap: 10px 20px;
+      border-bottom: 1px solid var(--mute);
+      padding-bottom: 8px;
+      margin-bottom: 10px;
+    }
+    .hdr .name { color: var(--ink); }
+    .hdr .brackets {
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+      color: var(--dim);
+      text-align: right;
+    }
+    .hdr .brackets b { color: var(--ink); font-weight: 500; }
+    .day-picker {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 8px 10px;
+      margin-bottom: 10px;
+      color: var(--dim);
+    }
+    .day-picker button {
+      font: inherit;
+      color: var(--dim);
+      background: none;
+      border: 1px solid var(--mute);
+      padding: 4px 8px;
+      cursor: pointer;
+      min-height: 32px;
+    }
+    .day-picker button:disabled {
+      opacity: 0.35;
+      cursor: default;
+    }
+    .day-picker .day {
+      color: var(--ink);
+      min-width: 7.5em;
+      text-align: center;
+    }
+    .day-picker .usage { color: var(--dim); }
+    nav {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px 14px;
+      margin-bottom: 10px;
+      color: var(--dim);
+      align-items: baseline;
+    }
+    nav button, .filters button, .app-hit {
+      font: inherit;
+      color: var(--dim);
+      background: none;
+      border: 0;
+      padding: 0;
+      cursor: pointer;
+      min-height: 28px;
+    }
+    nav button[aria-pressed="true"],
+    .filters button[aria-pressed="true"] { color: var(--ink); }
+    nav button:focus-visible,
+    .filters button:focus-visible,
+    .app-hit:focus-visible,
+    .day-picker button:focus-visible,
+    .mark:focus-visible {
+      outline: 1px solid var(--dim);
+      outline-offset: 2px;
+    }
+    .nav-sep { color: var(--mute); }
+    .filters {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px 12px;
+      margin-bottom: 12px;
+      color: var(--dim);
+      min-height: 1.2em;
+    }
+    .filters .sep { color: var(--mute); }
+    .filters .active-app { color: var(--hot); }
+    .block { margin-bottom: 12px; }
+    .block .label { color: var(--dim); margin-bottom: 6px; }
+    .axis {
+      display: grid;
+      grid-template-columns: 56px 1fr;
+      gap: 8px;
+      color: var(--dim);
+      margin-bottom: 4px;
+    }
+    .axis .ticks { display: flex; justify-content: space-between; }
+    .lane {
+      display: grid;
+      grid-template-columns: 56px 1fr;
+      gap: 8px;
+      align-items: center;
+      margin-bottom: 5px;
+    }
+    .lane .dev { color: var(--dim); }
+    .lane .dev.mac { color: var(--mac); }
+    .lane .dev.msi { color: var(--msi); }
+    .lane .dev.phone { color: var(--phone); }
+    .phone-fig { color: var(--dim); }
+    .track {
+      position: relative;
+      height: 12px;
+      border-top: 1px solid var(--mute);
+      border-bottom: 1px solid var(--mute);
+    }
+    .mark {
+      position: absolute;
+      top: 1px;
+      bottom: 1px;
+      width: 10px;
+      cursor: pointer;
+      box-sizing: border-box;
+      touch-action: manipulation;
+    }
+    .mark.mac { background: var(--mac); }
+    .mark.msi { background: var(--msi); }
+    .mark.dimmed { opacity: 0.18; }
+    .mark.selected {
+      outline: 1px solid var(--ink);
+      outline-offset: 1px;
+      z-index: 2;
+    }
+    .hover-panel {
+      margin-top: 8px;
+      min-height: 1.35em;
+      color: var(--dim);
+      border: 1px solid transparent;
+      padding: 6px 8px;
+    }
+    .hover-panel.on {
+      color: var(--ink);
+      border-color: var(--mute);
+    }
+    .hover-panel .k { color: var(--dim); }
+    .density {
+      display: grid;
+      grid-template-columns: 56px 1fr;
+      gap: 8px;
+      margin-top: 10px;
+      align-items: end;
+    }
+    .density .lab { color: var(--dim); padding-bottom: 2px; }
+    .density .cols {
+      display: flex;
+      align-items: flex-end;
+      gap: 2px;
+      height: 36px;
+    }
+    .density .col {
+      flex: 1 1 0;
+      min-width: 0;
+      display: flex;
+      flex-direction: column-reverse;
+      gap: 1px;
+    }
+    .density .brick {
+      height: 4px;
+      background: var(--mute);
+    }
+    .density .brick.on { background: var(--ink); opacity: 0.55; }
+    .empty { color: var(--dim); }
+    .sentence {
+      margin-top: 10px;
+      padding-top: 8px;
+      border-top: 1px solid var(--mute);
+    }
+    .sentence .prefix { color: var(--dim); }
+    .pov { margin-top: 8px; color: var(--dim); }
+    .pov .hi { color: var(--hot); }
+    .shared {
+      margin-top: 12px;
+      padding-top: 8px;
+      border-top: 1px solid var(--mute);
+    }
+    .row {
+      display: grid;
+      grid-template-columns: 1fr auto;
+      gap: 12px;
+      margin-bottom: 3px;
+      align-items: center;
+    }
+    .n { color: var(--dim); text-align: right; }
+    .stats { color: var(--dim); margin-bottom: 8px; }
+    .app-hit { text-align: left; color: inherit; }
+    .app-hit[aria-pressed="true"] { color: var(--hot); }
+    .app-hit:hover { color: var(--ink); }
+    .block-row {
+      display: flex;
+      gap: 2px;
+      flex-wrap: wrap;
+      margin-top: 2px;
+    }
+    .block-row i {
+      display: block;
+      width: 8px;
+      height: 8px;
+      background: var(--mac);
+    }
+    .block-row.msi i { background: var(--msi); }
+    .events { margin-top: 10px; color: var(--dim); }
+    .events .e { margin-bottom: 2px; }
+    .events .e .m { color: var(--ink); }
+    .later { margin-top: 10px; color: var(--mute); }
+    .spark {
+      position: relative;
+      height: 12px;
+      border-top: 1px solid var(--mute);
+      border-bottom: 1px solid var(--mute);
+      margin: 8px 0 12px;
+    }
+    .foot {
+      margin-top: 24px;
+      color: var(--dim);
+      border-top: 1px solid var(--mute);
+      padding-top: 8px;
+    }
+    .last-updated {
+      margin-top: 8px;
+      color: var(--mute);
+      font-size: 11px;
+    }
+    .day-picker button:not(:disabled):hover { color: var(--ink); border-color: var(--dim); }
+    .hover-panel.on { background: #121212; }
+    .mark.selected { box-shadow: 0 0 0 1px var(--bg), 0 0 0 2px var(--ink); outline: none; }
+    .hidden { display: none; }
+
+    @media (max-width: 640px) {
+      body { padding: 10px 10px 20px; font-size: 12px; }
+      .hdr { flex-direction: column; align-items: flex-start; gap: 4px; margin-bottom: 8px; padding-bottom: 6px; }
+      .hdr .brackets { display: none !important; }
+      .desktop-only { display: none !important; }
+      .axis, .lane { grid-template-columns: 36px 1fr; gap: 6px; }
+      .lane .dev { font-size: 11px; overflow: hidden; text-overflow: clip; white-space: nowrap; }
+      /* drop brackets on mobile labels via shorter text set in JS; CSS backup */
+      .density, .shared, .pov, .sentence, .foot, .last-updated { display: none !important; }
+      .track { height: 16px; }
+      .mark { width: 14px; top: 2px; bottom: 2px; }
+      .day-picker { gap: 6px; margin-bottom: 8px; }
+      .day-picker .usage { width: 100%; font-size: 11px; }
+      nav { gap: 10px 14px; margin-bottom: 8px; }
+      .filters { margin-bottom: 8px; gap: 6px 10px; }
+      .hover-panel { padding: 4px 0; border: 0; min-height: 1.2em; }
+      .hover-panel.on { background: transparent; border: 0; }
+      /* hide mac/msi drill tabs on mobile — overview only (+ phone when reported) */
+      #tab-mac, #tab-msi { display: none !important; }
+      .nav-sep { display: none !important; }
+    }
+  </style>
+</head>
+<body>
+  <header class="hdr">
+    <div class="name">daymeter</div>
+    <div class="brackets" id="hdr-brackets">loading…</div>
+  </header>
+
+  <div class="day-picker" id="day-picker" aria-label="day"></div>
+
+  <nav aria-label="views">
+    <button type="button" id="tab-overview" aria-pressed="true">overview</button>
+    <span class="nav-sep">·</span>
+    <button type="button" id="tab-mac" aria-pressed="false">mac</button>
+    <button type="button" id="tab-msi" aria-pressed="false">msi</button>
+    <button type="button" id="tab-phone" aria-pressed="false" class="hidden" hidden>phone</button>
+  </nav>
+
+  <div class="filters" id="filters" aria-label="slice"></div>
+
+  <section id="view-overview">
+    <div class="block">
+      <div class="label">across the day</div>
+      <div id="day-body"></div>
+      <div class="hover-panel" id="hover-panel" aria-live="polite"></div>
+      <div class="shared" id="shared-body"></div>
+    </div>
+  </section>
+
+  <section id="view-device" class="hidden">
+    <div class="block">
+      <div class="label" id="device-label">device</div>
+      <div id="device-body"></div>
+      <div class="hover-panel" id="hover-panel-device" aria-live="polite"></div>
+    </div>
+  </section>
+
+  <p class="foot">
+    hard blocks are real samples · hover for detail · tap to select · blanks are missing polls · denseness stairs only when the day is dense enough.
+  </p>
+  <p class="last-updated" id="last-updated">updated · 2026-09-11 23:59 IST</p>
+
+  <script>
+    const DAY_START = 6;
+    const DAY_END = 24;
+    const DENSITY_GATE = 12;
+
+    const state = {
+      view: "overview",
+      bothOnly: false,
+      deviceFilter: "all",
+      app: null,
+      selectedId: null,
+      day: null,
+      days: [],
+      allSamples: [],
+      sentences: {}, // day -> sentence
+      phones: {}, // day -> phone
+      phone: null,
+      sentence: null,
+    };
+
+    function parseTSV(text) {
+      return text.trim().split(/\n+/).filter(Boolean).map((line) => {
+        const [ts, device, app] = line.split("\t");
+        return { ts, device, app: (app || "").trim() };
+      });
+    }
+
+    function dayKeyFromTs(ts) {
+      const m = ts && ts.match(/^(\d{4}-\d{2}-\d{2})/);
+      return m ? m[1] : null;
+    }
+
+    function deviceKey(name) {
+      const n = (name || "").toLowerCase();
+      if (n.includes("msi") || n.includes("windows")) return "msi";
+      if (n.includes("phone") || n.includes("android")) return "phone";
+      return "mac";
+    }
+
+    function hourFrac(iso) {
+      const m = iso.match(/T(\d{2}):(\d{2})/);
+      if (!m) return null;
+      return +m[1] + (+m[2] / 60);
+    }
+
+    function timeLabel(iso) {
+      const m = iso.match(/T(\d{2}):(\d{2})/);
+      return m ? m[1] + ":" + m[2] : "";
+    }
+
+    function axisWindow(tagged) {
+      if (tagged.length === 0) return { start: DAY_START, end: DAY_END };
+      if (tagged.length < 6) {
+        const hs = tagged.map((s) => s.h);
+        let start = Math.floor(Math.min(...hs)) - 1;
+        let end = Math.ceil(Math.max(...hs)) + 1;
+        start = Math.max(DAY_START, start);
+        end = Math.min(DAY_END, Math.max(end, start + 2));
+        return { start, end };
+      }
+      return { start: DAY_START, end: DAY_END };
+    }
+
+    function pctIn(h, start, end) {
+      return ((h - start) / (end - start)) * 100;
+    }
+
+    function samplesForDay(day) {
+      return state.allSamples.filter((s) => dayKeyFromTs(s.ts) === day);
+    }
+
+    function taggedSamples(samples) {
+      return samples
+        .map((s, i) => {
+          const key = deviceKey(s.device);
+          const h = hourFrac(s.ts);
+          return { ...s, key, h, id: s.ts + "|" + key + "|" + s.app + "|" + i };
+        })
+        .filter((s) => s.h != null && s.h >= DAY_START && s.h < DAY_END && s.key !== "phone");
+    }
+
+    function buildByDev(tagged) {
+      const byDev = { mac: [], msi: [], phone: [] };
+      for (const s of tagged) byDev[s.key].push(s);
+      return byDev;
+    }
+
+    function overlapBuckets(byDev) {
+      const buckets = new Map();
+      for (const key of ["mac", "msi"]) {
+        for (const s of byDev[key]) {
+          const b = Math.floor(s.h * 2) / 2;
+          if (!buckets.has(b)) buckets.set(b, new Set());
+          buckets.get(b).add(key);
+        }
+      }
+      const both = new Set();
+      for (const [b, set] of buckets) {
+        if (set.has("mac") && set.has("msi")) both.add(b);
+      }
+      return both;
+    }
+
+    function switches(list) {
+      let n = 0;
+      for (let i = 1; i < list.length; i++) {
+        if (list[i].app !== list[i - 1].app) n++;
+      }
+      return n;
+    }
+
+    function topApps(list, limit = 12) {
+      const counts = new Map();
+      for (const s of list) {
+        if (!s.app) continue;
+        counts.set(s.app, (counts.get(s.app) || 0) + 1);
+      }
+      return [...counts.entries()].sort((a, b) => b[1] - a[1]).slice(0, limit);
+    }
+
+    function commonApps(byDev) {
+      const mac = new Map();
+      const msi = new Map();
+      for (const s of byDev.mac) mac.set(s.app, (mac.get(s.app) || 0) + 1);
+      for (const s of byDev.msi) msi.set(s.app, (msi.get(s.app) || 0) + 1);
+      const out = [];
+      for (const [app, nMac] of mac) {
+        if (msi.has(app)) out.push({ app, mac: nMac, msi: msi.get(app) });
+      }
+      return out.sort((a, b) => b.mac + b.msi - (a.mac + a.msi));
+    }
+
+    function switchEvents(byDev) {
+      const tagged = [];
+      for (const s of byDev.mac) tagged.push(s);
+      for (const s of byDev.msi) tagged.push(s);
+      tagged.sort((a, b) => a.ts.localeCompare(b.ts));
+      const hops = [];
+      for (let i = 1; i < tagged.length; i++) {
+        if (tagged[i].key !== tagged[i - 1].key) {
+          hops.push({ ts: tagged[i].ts, text: tagged[i - 1].key + " → " + tagged[i].key });
+        }
+      }
+      return hops.slice(-12);
+    }
+
+    function attentionPov(tagged, byDev) {
+      if (tagged.length < 2) {
+        return `<div class="pov">attention · too few samples to judge switching</div>`;
+      }
+      const appSw = switches(byDev.mac) + switches(byDev.msi);
+      const hops = switchEvents(byDev).length;
+      const spanH = tagged[tagged.length - 1].h - tagged[0].h || 0.5;
+      const rate = appSw / Math.max(spanH, 0.5);
+      let line;
+      if (rate >= 3) {
+        line = `<span class="hi">high churn · ~${rate.toFixed(1)} app switches/hr · ${hops} device hops</span>`;
+      } else if (rate >= 1.2) {
+        line = `busy strip · ~${rate.toFixed(1)} app switches/hr · ${hops} device hops`;
+      } else {
+        line = `steady · ~${rate.toFixed(1)} app switches/hr · ${hops} device hops`;
+      }
+      return `<div class="pov">attention · ${line} · not a productivity score</div>`;
+    }
+
+    function dayUsageSummary(day) {
+      const tagged = taggedSamples(samplesForDay(day));
+      const byDev = buildByDev(tagged);
+      const phone = state.phones[day];
+      const parts = [];
+      parts.push(tagged.length + " samples");
+      parts.push("mac " + byDev.mac.length);
+      parts.push("msi " + byDev.msi.length);
+      if (phone && phone.hours) parts.push("phone reported " + phone.hours + "h");
+      return parts.join(" · ");
+    }
+
+    function setApp(app) {
+      state.app = app || null;
+      renderFilters();
+      renderAll();
+    }
+
+    function setDay(day) {
+      if (!day || day === state.day) return;
+      state.day = day;
+      state.selectedId = null;
+      state.app = null;
+      state.bothOnly = false;
+      state.deviceFilter = "all";
+      state.phone = state.phones[day] || null;
+      state.sentence = state.sentences[day] || null;
+      renderAll();
+    }
+
+    function shiftDay(delta) {
+      const i = state.days.indexOf(state.day);
+      if (i < 0) return;
+      const next = state.days[i + delta];
+      if (next) setDay(next);
+    }
+
+    function detailHtml(s) {
+      if (!s) return "";
+      return `<span class="k">[</span> ${timeLabel(s.ts)} · ${s.key} · ${s.app} <span class="k">]</span>`;
+    }
+
+    function showHover(panelId, s) {
+      const el = document.getElementById(panelId);
+      if (!el) return;
+      if (!s) {
+        // keep selected detail if any
+        if (state.selectedId) {
+          const tagged = taggedSamples(samplesForDay(state.day));
+          const sel = tagged.find((x) => x.id === state.selectedId);
+          if (sel) {
+            el.classList.add("on");
+            el.innerHTML = detailHtml(sel) + ` <span class="k">selected</span>`;
+            return;
+          }
+        }
+        el.classList.remove("on");
+        el.innerHTML = "";
+        return;
+      }
+      el.classList.add("on");
+      el.innerHTML = detailHtml(s);
+    }
+
+    function bindMarks(root, panelId, list) {
+      const byId = new Map(list.map((s) => [s.id, s]));
+      root.querySelectorAll(".mark[data-id]").forEach((node) => {
+        const id = node.getAttribute("data-id");
+        const s = byId.get(id);
+        node.addEventListener("mouseenter", () => showHover(panelId, s));
+        node.addEventListener("mouseleave", () => showHover(panelId, null));
+        node.addEventListener("focus", () => showHover(panelId, s));
+        node.addEventListener("blur", () => showHover(panelId, null));
+        node.addEventListener("click", (e) => {
+          e.stopPropagation();
+          state.selectedId = state.selectedId === id ? null : id;
+          // optional: also slice to app on select
+          renderAll();
+        });
+      });
+    }
+
+    function renderDayPicker() {
+      const el = document.getElementById("day-picker");
+      if (!state.days.length) {
+        el.innerHTML = `<span class="empty">no days in log yet</span>`;
+        return;
+      }
+      const i = state.days.indexOf(state.day);
+      const usage = dayUsageSummary(state.day);
+      if (state.days.length < 2) {
+        el.innerHTML = `
+          <button type="button" id="day-prev" disabled aria-label="previous day">←</button>
+          <div class="day">[ ${state.day} ]</div>
+          <button type="button" id="day-next" disabled aria-label="next day">→</button>
+          <div class="usage">${usage}</div>
+          <div class="usage">one day in the log · prev/next wait for another real day</div>
+        `;
+      } else {
+        el.innerHTML = `
+          <button type="button" id="day-prev" ${i <= 0 ? "disabled" : ""} aria-label="previous day">←</button>
+          <div class="day">[ ${state.day} ]</div>
+          <button type="button" id="day-next" ${i < 0 || i >= state.days.length - 1 ? "disabled" : ""} aria-label="next day">→</button>
+          <div class="usage">${usage}</div>
+        `;
+      }
+      document.getElementById("day-prev").onclick = () => shiftDay(-1);
+      document.getElementById("day-next").onclick = () => shiftDay(1);
+    }
+
+    function renderFilters() {
+      const el = document.getElementById("filters");
+      const tagged = taggedSamples(samplesForDay(state.day));
+      const apps = [...new Set(tagged.map((s) => s.app).filter(Boolean))].sort();
+      const dev = state.deviceFilter || "all";
+      const bothPressed = state.bothOnly ? "true" : "false";
+
+      let html = "";
+      html += `<button type="button" data-devf="all" aria-pressed="${dev === "all" ? "true" : "false"}">all</button>`;
+      html += ` <span class="sep">·</span> `;
+      html += `<button type="button" data-devf="mac" aria-pressed="${dev === "mac" ? "true" : "false"}">mac</button>`;
+      html += ` <span class="sep">·</span> `;
+      html += `<button type="button" data-devf="msi" aria-pressed="${dev === "msi" ? "true" : "false"}">msi</button>`;
+      html += ` <span class="sep desktop-only">·</span> `;
+      html += `<button type="button" class="desktop-only" id="both-awake" aria-pressed="${bothPressed}">both awake</button>`;
+
+      if (apps.length && state.view === "overview") {
+        for (const app of apps.slice(0, 8)) {
+          const pressed = state.app === app ? "true" : "false";
+          const safe = app.replace(/"/g, "&quot;");
+          html += ` <span class="sep">·</span> <button type="button" data-appf="${safe}" aria-pressed="${pressed}">${app}</button>`;
+        }
+      }
+      if (state.app) {
+        html += ` <span class="sep">·</span> <button type="button" id="clear-app">clear</button>`;
+      }
+      el.innerHTML = html;
+
+      el.querySelectorAll("[data-devf]").forEach((btn) => {
+        btn.onclick = () => {
+          state.deviceFilter = btn.getAttribute("data-devf");
+          if (state.deviceFilter !== "all") state.bothOnly = false;
+          renderFilters();
+          renderAll();
+        };
+      });
+      el.querySelectorAll("[data-appf]").forEach((btn) => {
+        btn.onclick = () => {
+          const a = btn.getAttribute("data-appf");
+          setApp(state.app === a ? null : a);
+        };
+      });
+      const both = document.getElementById("both-awake");
+      if (both) {
+        both.onclick = () => {
+          state.bothOnly = !state.bothOnly;
+          if (state.bothOnly) state.deviceFilter = "all";
+          renderFilters();
+          renderAll();
+        };
+      }
+      const c = document.getElementById("clear-app");
+      if (c) c.onclick = () => setApp(null);
+    }
+
+    function matchSeg(s, both) {
+      if (state.app && s.app !== state.app) return false;
+      if (state.deviceFilter === "mac" && s.key !== "mac") return false;
+      if (state.deviceFilter === "msi" && s.key !== "msi") return false;
+      if (state.bothOnly && !both.has(Math.floor(s.h * 2) / 2)) return false;
+      return true;
+    }
+
+    function renderOverview(allTagged, byDev, phone) {
+      const el = document.getElementById("day-body");
+      const both = overlapBuckets(byDev);
+
+      if (allTagged.length === 0 && !(phone && phone.hours)) {
+        el.innerHTML = `<div class="empty">no samples this day · night note will say we could not see enough</div>`;
+        document.getElementById("shared-body").innerHTML = "";
+        showHover("hover-panel", null);
+        return;
+      }
+
+      const win = axisWindow(allTagged);
+      const span = Math.max(win.end - win.start, 1);
+      const tickStep = span <= 6 ? 1 : span <= 12 ? 2 : 3;
+      const ticks = [];
+      for (let h = win.start; h <= win.end; h += tickStep) {
+        ticks.push(String(h).padStart(2, "0"));
+      }
+      if (ticks[ticks.length - 1] !== String(win.end).padStart(2, "0")) {
+        ticks.push(String(win.end).padStart(2, "0"));
+      }
+
+      function lane(key, label) {
+        const full = byDev[key] || [];
+        const marks = full
+          .map((s) => {
+            const left = Math.max(0, Math.min(100, pctIn(s.h, win.start, win.end)));
+            const dim = matchSeg(s, both) ? "" : " dimmed";
+            const sel = state.selectedId === s.id ? " selected" : "";
+            const safe = (s.app || "").replace(/"/g, "&quot;");
+            return `<div class="mark ${key}${dim}${sel}" style="left:calc(${left}% - 5px)" data-id="${s.id.replace(/"/g, "&quot;")}" data-app="${safe}" role="button" tabindex="0" aria-label="${s.key} ${timeLabel(s.ts)} ${safe}"></div>`;
+          })
+          .join("");
+        let phoneFig = "";
+        if (key === "phone" && phone && phone.hours) {
+          phoneFig = ` <span class="phone-fig">reported ${phone.hours}h</span>`;
+        }
+        return `
+          <div class="lane">
+            <div class="dev ${key}">${label}${phoneFig}</div>
+            <div class="track">${marks}</div>
+          </div>`;
+      }
+
+      let densityHtml = "";
+      if (allTagged.length >= DENSITY_GATE) {
+        const hourCounts = new Map();
+        for (const s of allTagged) {
+          if (!matchSeg(s, both)) continue;
+          const hr = Math.floor(s.h);
+          hourCounts.set(hr, (hourCounts.get(hr) || 0) + 1);
+        }
+        const hStart = Math.floor(win.start);
+        const hEnd = Math.ceil(win.end);
+        const hours = [];
+        for (let hr = hStart; hr < hEnd; hr++) hours.push(hr);
+        const marked = hours.filter((hr) => hourCounts.has(hr));
+        if (marked.length) {
+          const max = Math.max(...marked.map((hr) => hourCounts.get(hr)));
+          const cols = hours
+            .map((hr) => {
+              const n = hourCounts.get(hr) || 0;
+              if (!n) return `<div class="col empty" title="${String(hr).padStart(2, "0")}"></div>`;
+              const bricks = Array.from({ length: n }, () => `<div class="brick on"></div>`).join("");
+              return `<div class="col" title="${String(hr).padStart(2, "0")}:00 · ${n}">${bricks}</div>`;
+            })
+            .join("");
+          densityHtml = `
+            <div class="density">
+              <div class="lab">density</div>
+              <div class="cols" style="height:${Math.min(48, max * 5)}px">${cols}</div>
+            </div>`;
+        }
+      }
+
+      const sparseNote =
+        allTagged.length > 0 && allTagged.length < 6
+          ? `<div class="empty" style="margin-top:6px">sparse · ${allTagged.length} marks · ruler cropped · no density stairs</div>`
+          : allTagged.length < DENSITY_GATE
+            ? `<div class="empty" style="margin-top:6px">marks only · density stairs after ${DENSITY_GATE}+ samples</div>`
+            : "";
+
+      const filtered = allTagged.filter((s) => matchSeg(s, both));
+      const sliceNote =
+        state.app || state.bothOnly
+          ? `<div class="empty" style="margin-top:6px">showing ${filtered.length} of ${allTagged.length} marks</div>`
+          : "";
+
+      const sentence = state.sentence
+        ? `<div class="sentence"><span class="prefix">night · </span>${state.sentence}</div>`
+        : `<div class="sentence"><span class="prefix">night · </span>awaiting note · ${allTagged.length} sample${allTagged.length === 1 ? "" : "s"}</div>`;
+
+      el.innerHTML = `
+        <div class="axis"><div></div><div class="ticks">${ticks.map((t) => `<span>${t}</span>`).join("")}</div></div>
+        ${lane("mac", "mac")}
+        ${lane("msi", "msi")}
+        ${phone && phone.hours ? lane("phone", "phone") : ""}
+        ${densityHtml}
+        ${sparseNote}
+        ${sliceNote}
+        ${sentence}
+        ${attentionPov(allTagged, byDev)}
+      `;
+
+      bindMarks(el, "hover-panel", allTagged);
+      showHover("hover-panel", null);
+
+      el.querySelectorAll(".mark[data-app]").forEach((node) => {
+        node.addEventListener("dblclick", () => {
+          const app = node.getAttribute("data-app");
+          setApp(state.app === app ? null : app);
+        });
+      });
+
+      const shared = document.getElementById("shared-body");
+      const common = commonApps(byDev);
+      if (!common.length) {
+        shared.innerHTML = "";
+        return;
+      }
+      shared.innerHTML =
+        `<div class="label">shared</div>` +
+        common
+          .map(({ app, mac, msi }) => {
+            const pressed = state.app === app ? "true" : "false";
+            return `<div class="row">
+              <button type="button" class="app-hit" data-app="${app.replace(/"/g, "&quot;")}" aria-pressed="${pressed}">${app}</button>
+              <div class="n">mac ×${mac} · msi ×${msi}</div>
+            </div>`;
+          })
+          .join("");
+      shared.querySelectorAll(".app-hit").forEach((btn) => {
+        btn.addEventListener("click", () => {
+          const app = btn.getAttribute("data-app");
+          setApp(state.app === app ? null : app);
+        });
+      });
+    }
+
+    function renderDeviceTab(byDev, phone, which) {
+      const el = document.getElementById("device-body");
+      const label = document.getElementById("device-label");
+
+      if (which === "phone") {
+        label.textContent = "phone";
+        if (!(phone && phone.hours)) {
+          el.innerHTML = `<div class="empty">out of sensor path</div>`;
+          return;
+        }
+        const tops = phone.top || [];
+        const rows = tops.length
+          ? tops.map((app) => `<div class="row"><div>${app}</div><div class="n"></div></div>`).join("")
+          : `<div class="empty">no top apps in reported line</div>`;
+        const sw = phone.switches != null && phone.switches !== ""
+          ? ` · ${phone.switches} switches`
+          : "";
+        el.innerHTML = `
+          <div class="stats">reported ${phone.hours}h${sw} · not sampled attention</div>
+          ${rows}
+          <div class="later">reported via writer · not merged into mac/msi sample lanes</div>`;
+        return;
+      }
+
+      const list = byDev[which] || [];
+      label.textContent = which;
+      if (!list.length) {
+        el.innerHTML = `<div class="empty">no samples for ${which} this day</div>`;
+        showHover("hover-panel-device", null);
+        return;
+      }
+
+      const win = axisWindow(list);
+      const spark = list
+        .map((s) => {
+          const left = pctIn(s.h, win.start, win.end);
+          const dim = state.app && s.app !== state.app ? " dimmed" : "";
+          const sel = state.selectedId === s.id ? " selected" : "";
+          const safe = (s.app || "").replace(/"/g, "&quot;");
+          return `<div class="mark ${which}${dim}${sel}" style="left:calc(${left}% - 5px)" data-id="${s.id.replace(/"/g, "&quot;")}" data-app="${safe}" role="button" tabindex="0"></div>`;
+        })
+        .join("");
+
+      const tops = topApps(list, 12);
+      const sw = switches(list);
+      const log = list
+        .slice()
+        .sort((a, b) => a.ts.localeCompare(b.ts))
+        .slice(-24)
+        .map((s) => `<div class="e"><span class="t">${timeLabel(s.ts)}</span> <span class="m">${s.app}</span></div>`)
+        .join("");
+
+      const rows = tops
+        .map(([app, n]) => {
+          const pressed = state.app === app ? "true" : "false";
+          const squares = Array.from({ length: Math.min(n, 24) }, () => "<i></i>").join("");
+          return `<div class="row">
+            <div>
+              <button type="button" class="app-hit" data-app="${app.replace(/"/g, "&quot;")}" aria-pressed="${pressed}">${app}</button>
+              <div class="block-row ${which}">${squares}</div>
+            </div>
+            <div class="n">×${n}</div>
+          </div>`;
+        })
+        .join("");
+
+      el.innerHTML = `
+        <div class="stats">${list.length} samples · ${sw} app switches</div>
+        <div class="spark">${spark}</div>
+        <div class="label">apps</div>
+        ${rows}
+        <div class="events">
+          <div class="label">recent marks</div>
+          ${log}
+        </div>
+        <div class="later">tabs / urls · not collected on ${which} yet</div>
+      `;
+
+      bindMarks(el, "hover-panel-device", list);
+      showHover("hover-panel-device", null);
+
+      el.querySelectorAll(".app-hit").forEach((btn) => {
+        btn.addEventListener("click", () => {
+          const app = btn.getAttribute("data-app");
+          setApp(state.app === app ? null : app);
+          setView("overview");
+        });
+      });
+    }
+
+    function setView(which) {
+      state.view = which;
+      renderAll();
+    }
+
+    function renderAll() {
+      renderDayPicker();
+      const daySamples = samplesForDay(state.day);
+      const tagged = taggedSamples(daySamples);
+      const byDev = buildByDev(tagged);
+      const phone = state.phone;
+      const phoneBit = phone && phone.hours ? "reported" : "none";
+      document.getElementById("hdr-brackets").innerHTML = `
+        <div>[ day: <b>${state.day || "—"}</b> ]</div>
+        <div>[ samples: <b>${tagged.length}</b> ]</div>
+        <div>[ mac: <b>${byDev.mac.length}</b> · msi: <b>${byDev.msi.length}</b> ]</div>
+        <div>[ phone: <b>${phoneBit}</b> ]</div>`;
+
+      const phoneTab = document.getElementById("tab-phone");
+      const showPhone = !!(phone && phone.hours);
+      phoneTab.classList.toggle("hidden", !showPhone);
+      phoneTab.hidden = !showPhone;
+      if (state.view === "phone" && !showPhone) state.view = "overview";
+
+      // mobile: force overview (except phone when reported)
+      try {
+        if (window.matchMedia("(max-width: 640px)").matches) {
+          if (state.view === "mac" || state.view === "msi") state.view = "overview";
+        }
+      } catch (_) {}
+      const deviceTab = state.view === "mac" || state.view === "msi" || state.view === "phone";
+      document.getElementById("view-overview").classList.toggle("hidden", deviceTab);
+      document.getElementById("view-device").classList.toggle("hidden", !deviceTab);
+      ["overview", "mac", "msi", "phone"].forEach((id) => {
+        const el = document.getElementById("tab-" + id);
+        if (el) el.setAttribute("aria-pressed", state.view === id ? "true" : "false");
+      });
+
+      if (deviceTab) renderDeviceTab(byDev, phone, state.view);
+      else renderOverview(tagged, byDev, phone);
+      renderFilters();
+    }
+
+    document.getElementById("tab-overview").onclick = () => setView("overview");
+    document.getElementById("tab-mac").onclick = () => setView("mac");
+    document.getElementById("tab-msi").onclick = () => setView("msi");
+    document.getElementById("tab-phone").onclick = () => setView("phone");
+    window.addEventListener("keydown", (e) => {
+      if (e.key === "Escape") {
+        state.selectedId = null;
+        setApp(null);
+      }
+      if (e.key === "ArrowLeft") shiftDay(-1);
+      if (e.key === "ArrowRight") shiftDay(1);
+    });
+
+    async function load() {
+      let samples = [];
+      try {
+        const metaRes = await fetch("./data.json", { cache: "no-store" });
+        if (metaRes.ok) {
+          const meta = await metaRes.json();
+          if (Array.isArray(meta.samples)) samples = meta.samples;
+          if (meta.lastUpdated) {
+            const lu = document.getElementById("last-updated");
+            const m = String(meta.lastUpdated).match(/(\d{4}-\d{2}-\d{2})T(\d{2}):(\d{2})/);
+            if (lu && m) lu.textContent = `updated · ${m[1]} ${m[2]}:${m[3]} IST`;
+          }
+          // multi-day maps
+          if (meta.sentences && typeof meta.sentences === "object") state.sentences = meta.sentences;
+          if (meta.phones && typeof meta.phones === "object") state.phones = meta.phones;
+          // legacy single-day fields
+          if (meta.day && meta.sentence) state.sentences[meta.day] = meta.sentence;
+          if (meta.day && meta.phone) state.phones[meta.day] = meta.phone;
+          if (meta.days && Array.isArray(meta.byDay)) {
+            // optional richer shape
+            for (const d of meta.byDay) {
+              if (d.day && Array.isArray(d.samples)) samples = samples.concat(d.samples);
+              if (d.day && d.sentence) state.sentences[d.day] = d.sentence;
+              if (d.day && d.phone) state.phones[d.day] = d.phone;
+            }
+          }
+        }
+      } catch (_) {}
+      if (!samples.length) {
+        try {
+          const tsv = await fetch("./foreground-samples.tsv", { cache: "no-store" });
+          if (tsv.ok) samples = parseTSV(await tsv.text());
+        } catch (_) {}
+      }
+
+      state.allSamples = samples;
+      const daySet = new Set();
+      for (const s of samples) {
+        const d = dayKeyFromTs(s.ts);
+        if (d) daySet.add(d);
+      }
+      try {
+        const pr = await fetch("./phone-reported.tsv", { cache: "no-store" });
+        if (pr.ok) {
+          const text = await pr.text();
+          for (const line of text.trim().split(/\n+/).filter(Boolean)) {
+            if (line.startsWith("#")) continue;
+            const parts = line.split("\t");
+            const day = parts[0];
+            const hours = parts[1];
+            const tops = parts[2] || "";
+            const switches = parts[3] || null;
+            if (!day || !hours) continue;
+            state.phones[day] = {
+              hours: hours,
+              top: tops.split(",").map((s) => s.trim()).filter(Boolean),
+              switches: switches,
+            };
+            daySet.add(day);
+          }
+        }
+      } catch (_) {}
+      state.days = [...daySet].sort();
+      if (!state.days.length) {
+        const today = new Date().toLocaleDateString("en-CA", { timeZone: "Asia/Kolkata" });
+        state.days = [today];
+      }
+      state.day = state.days[state.days.length - 1];
+      state.phone = state.phones[state.day] || null;
+      state.sentence = state.sentences[state.day] || null;
+      renderAll();
+      const built = document.querySelector('meta[name="daymeter-built"]');
+      const lu = document.getElementById("last-updated");
+      if (built && lu && built.content) lu.textContent = "updated · " + built.content;
+    }
+
+    load();
+  </script>
+</body>
+</html>

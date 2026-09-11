@@ -88,4 +88,5 @@ You don’t need these to use the product. They’re here so a later session doe
 - A night note for 11 Sep (and for 12 Sep once that day fills).
 - Phone and computer on the same calendar day, once Writer runs during waking hours.
 - Browser tabs / URLs on Mac and MSI — named as missing, not built.
-- This GitHub repo becoming the place new takes ship from, instead of Origin temp workspaces.
+- Browser tabs / URLs on Mac and MSI — named as missing, not built.
+- Keep the Origin ingest URL (dashboard 9) alive so the phone on your pocket can still send. The GitHub copies of the strip and the download page are so those two pages don’t depend on a temp Origin session.

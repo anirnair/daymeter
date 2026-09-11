@@ -2,7 +2,7 @@
 
 A quiet picture of **where attention sat across a day** — Mac, Windows laptop (MSI), and phone — without turning it into a score.
 
-This GitHub repo is the durable home for that picture: what it is, how to open the latest builds, and the product choices that stuck after a day of Origin sessions. The live experiments still live on Vercel; the links below are the ones to use.
+This GitHub repo is the durable home for that picture: what it is, the design choices that stuck, and the actual strip page plus Writer download so they keep running even after a Cursor Origin session ends.
 
 ---
 
@@ -77,8 +77,13 @@ The latest Writer build exists because the previous one could crash if you opene
 
 ## What this repo is (and isn’t)
 
-This is the **product memory**: the idea, the rules, the live links, and how the Origin sessions moved.
+This is the **product home**: the idea, the rules, the live links, and the files that make the strip and the Writer download page.
 
-It is not yet the place the live strip is built from. Those experiments still sit in Cursor Origin (dashboard and Writer are separate workspaces) and publish to the Vercel links above. Older numbered URLs (`dashboard`, `dashboard2` … `dashboard10`, `writer-apk` … `writer-apk3`) are earlier takes — useful if you want to see a cut, not for daily use.
+- **`dashboard/`** — the day strip you open in a browser (the same picture as the latest Origin take).
+- **`writer/`** — the phone download door, plus the Writer app file.
+
+Those two folders are what stay published. They do not turn off when an Origin session ends.
+
+The numbered Origin takes (`dashboard` … `dashboard11`, `writer-apk` … `writer-apk4`) are still up too. Writer on the phone currently sends its day-summary to the Origin strip (take 9), which is why that URL needs to stay live as well.
 
 A fuller session-by-session walk, still in plain language: [context/origin-sessions.md](context/origin-sessions.md).
