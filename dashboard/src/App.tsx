@@ -358,7 +358,11 @@ export default function App() {
         <div className="foot">
           Updated {prettyUpdated(data.lastUpdated)}
           <span className="foot-sep"> · </span>
-          {data.freshness.source === "live" ? "live store + seed" : "seed copy"}
+          {data.freshness.source === "live"
+            ? "live store + seed"
+            : data.freshness.source === "origin"
+              ? "Origin pull + seed"
+              : "seed copy"}
           <span className="foot-sep"> · </span>
           hard marks are real samples · phone summaries stay off the hour grid · timed sessions sit on it
         </div>

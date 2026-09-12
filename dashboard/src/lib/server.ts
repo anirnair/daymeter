@@ -2,8 +2,9 @@ import type { IncomingMessage, ServerResponse } from "node:http";
 import { generateBehavior } from "./behavior";
 import { applyIngest, mergeMeta, parseIngestBody } from "./ingest";
 import { hydrateMeta } from "./load";
+import { readOrigin } from "./origin";
 import { liveWritable, readLive, readSeed, writeLive } from "./store";
-import type { DaymeterData, Freshness } from "./types";
+import type { DaymeterData, PhoneReport } from "./types";
 
 export const CORS = {
   "Access-Control-Allow-Origin": "*",
@@ -42,47 +43,48 @@ function nowIso(): string {
   return `${d.getUTCFullYear()}-${pad(d.getUTCMonth() + 1)}-${pad(d.getUTCDate())}T${pad(d.getUTCHours())}:${pad(d.getUTCMinutes())}:${pad(d.getUTCSeconds())}+0530`;
 }
 
+export function latestPhone(phones: Record<string, PhoneReport>): PhoneReport | null {
+  return Object.values(phones)
+    .sort((a, b) => (a.day || "").localeCompare(b.day || ""))
+    .at(-1) ?? null;
+}
+
 export async function buildLiveData(): Promise<DaymeterData> {
   const seed = await readSeed();
+  const origin = await readOrigin();
   const live = await readLive();
-  const meta = mergeMeta(seed, live);
+  const meta = mergeMeta(mergeMeta(seed, origin), live);
+  const hasLive = Boolean(live.lastIngest || live.samples.length);
+  const hasOrigin = Boolean(
+    origin && (origin.lastUpdated || origin.samples.length || Object.keys(origin.phones).length),
+  );
   const data = hydrateMeta(meta, {
-    freshness: freshnessFrom(live, meta.lastUpdated ?? null),
+    freshness: {
+      source: hasLive ? "live" : hasOrigin ? "origin" : "seed",
+      lastIngest: live.lastIngest,
+      lastUpdated: meta.lastUpdated ?? live.lastUpdated ?? origin?.lastUpdated ?? null,
+      devices: {
+        mac: live.devices.mac ?? origin?.devices.mac ?? null,
+        msi: live.devices.msi ?? origin?.devices.msi ?? null,
+        phone: live.devices.phone ?? origin?.devices.phone ?? null,
+      },
+      writable: liveWritable(),
+    },
     notes: [],
   });
-  const computed = generateBehavior(
-    data.samples,
-    Object.values(data.phones).sort((a, b) => a.day.localeCompare(b.day)).at(-1) ?? null,
-    {
-      device: "all",
-      app: null,
-      cls: "all",
-      hour: null,
-      band: "all",
-      overlap: false,
-    },
-    data.days,
-  );
+  const computed = generateBehavior(data.samples, latestPhone(data.phones), {
+    device: "all",
+    app: null,
+    cls: "all",
+    hour: null,
+    band: "all",
+    overlap: false,
+  }, data.days);
   const extras = live.notes.filter((row) => row.id.startsWith("agent-"));
   const byId = new Map(computed.map((row) => [row.id, row]));
   for (const row of extras) byId.set(row.id, row);
   data.notes = [...byId.values()];
   return data;
-}
-
-function freshnessFrom(live: Awaited<ReturnType<typeof readLive>>, lastUpdated: string | null): Freshness {
-  const hasLive = Boolean(live.lastIngest || live.samples.length);
-  return {
-    source: hasLive ? "live" : "seed",
-    lastIngest: live.lastIngest,
-    lastUpdated: live.lastUpdated || lastUpdated,
-    devices: {
-      mac: live.devices.mac ?? null,
-      msi: live.devices.msi ?? null,
-      phone: live.devices.phone ?? null,
-    },
-    writable: liveWritable(),
-  };
 }
 
 export async function handleLiveGet(): Promise<Response> {
@@ -117,8 +119,8 @@ export async function handleIngestPost(url: string, headers: Headers, body: stri
   }
   const stamp = nowIso();
   const next = applyIngest(await readLive(), parsed, stamp);
-  const merged = hydrateMeta(mergeMeta(await readSeed(), next));
-  next.notes = generateBehavior(merged.samples, Object.values(merged.phones)[0] ?? null, {
+  const merged = hydrateMeta(mergeMeta(mergeMeta(await readSeed(), await readOrigin()), next));
+  next.notes = generateBehavior(merged.samples, latestPhone(merged.phones), {
     device: "all",
     app: null,
     cls: "all",
@@ -144,7 +146,7 @@ export async function handleAgent(url: string, headers: Headers, body: string, m
     return json({ ok: false, error: "unauthorized" }, 401);
   }
   const data = await buildLiveData();
-  const computed = generateBehavior(data.samples, Object.values(data.phones)[0] ?? null, {
+  const computed = generateBehavior(data.samples, latestPhone(data.phones), {
     device: "all",
     app: null,
     cls: "all",
@@ -187,17 +189,54 @@ export async function handleAgent(url: string, headers: Headers, body: string, m
   return json({ ok: true, notes, count: notes.length });
 }
 
-export async function readIncoming(req: IncomingMessage): Promise<{ url: string; headers: Headers; body: string; method: string }> {
-  const chunks: Buffer[] = [];
-  for await (const chunk of req) chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk));
+type NodeRequest = IncomingMessage & { body?: unknown };
+
+function bodyFromNode(req: NodeRequest): string | null {
+  if (typeof req.body === "string") return req.body;
+  if (typeof Buffer !== "undefined" && Buffer.isBuffer(req.body)) return req.body.toString("utf8");
+  if (req.body && typeof req.body === "object") return JSON.stringify(req.body);
+  return null;
+}
+
+export async function readIncoming(req: NodeRequest): Promise<{ url: string; headers: Headers; body: string; method: string }> {
   const headers = new Headers();
   for (const [key, value] of Object.entries(req.headers)) {
     if (value == null) continue;
     headers.set(key, Array.isArray(value) ? value.join(", ") : value);
   }
+  const pre = bodyFromNode(req);
+  let body = pre ?? "";
+  if (pre == null) {
+    const chunks: Buffer[] = [];
+    for await (const chunk of req) chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk));
+    body = Buffer.concat(chunks).toString("utf8");
+  }
   const host = headers.get("host") || "localhost";
   const url = `http://${host}${req.url || "/"}`;
-  return { url, headers, body: Buffer.concat(chunks).toString("utf8"), method: (req.method || "GET").toUpperCase() };
+  return { url, headers, body, method: (req.method || "GET").toUpperCase() };
+}
+
+export function asNodeHandler(
+  route: (incoming: Awaited<ReturnType<typeof readIncoming>>) => Promise<Response>,
+) {
+  return async function handler(req: NodeRequest, res: ServerResponse): Promise<void> {
+    try {
+      if ((req.method || "GET").toUpperCase() === "OPTIONS") {
+        res.statusCode = 204;
+        for (const [key, value] of Object.entries(CORS)) res.setHeader(key, value);
+        res.end();
+        return;
+      }
+      const incoming = await readIncoming(req);
+      const response = await route(incoming);
+      writeNodeResponse(res, response, await response.text());
+    } catch (err) {
+      console.error(err);
+      res.statusCode = 500;
+      res.setHeader("Content-Type", "application/json");
+      res.end(JSON.stringify({ ok: false, error: "server-error" }));
+    }
+  };
 }
 
 export function writeNodeResponse(res: ServerResponse, response: Response, body: string): void {

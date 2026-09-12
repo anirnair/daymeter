@@ -2,8 +2,9 @@ import { classifyApp } from "./classify";
 import { deviceKey, dayKey, parseIso, hourFrac } from "./format";
 import { emptyFreshness } from "./freshness";
 import { estimateSampleMinutes, parsePhoneLine } from "./metrics";
-import { normalizePhone } from "./ingest";
-import type { DaymeterData, Meta, PhoneReport, RawSample, Sample } from "./types";
+import { mergeMeta, normalizePhone } from "./ingest";
+import { readOrigin } from "./origin";
+import type { DaymeterData, Freshness, Meta, PhoneReport, RawSample, Sample } from "./types";
 
 export function asSample(raw: RawSample, i: number): Sample | null {
   const ms = parseIso(raw.ts);
@@ -78,7 +79,7 @@ export function hydrateMeta(meta: Meta, extras?: Partial<DaymeterData>): Daymete
   };
 }
 
-export async function loadSeed(): Promise<DaymeterData> {
+async function readClientSeedMeta(): Promise<Meta> {
   let meta: Meta = {};
   try {
     const res = await fetch("./data.json", { cache: "no-store" });
@@ -106,21 +107,46 @@ export async function loadSeed(): Promise<DaymeterData> {
     }
   }
 
-  const data = hydrateMeta(meta);
-
+  const phones = { ...(meta.phones ?? {}) };
   try {
     const pr = await fetch("./phone-reported.tsv", { cache: "no-store" });
     if (pr.ok) {
       const text = await pr.text();
       for (const line of text.trim().split(/\n+/)) {
         const parsed = parsePhoneLine(line);
-        if (parsed) data.phones[parsed.day] = parsed;
+        if (parsed) phones[parsed.day] = parsed;
       }
     }
   } catch {
     /* optional */
   }
+  meta.phones = phones;
+  return meta;
+}
 
+function originFreshness(
+  origin: Awaited<ReturnType<typeof readOrigin>>,
+  lastUpdated: string | null,
+): Freshness {
+  const hasOrigin = Boolean(
+    origin && (origin.lastUpdated || origin.samples.length || Object.keys(origin.phones).length),
+  );
+  return {
+    source: hasOrigin ? "origin" : "seed",
+    lastIngest: null,
+    lastUpdated: lastUpdated ?? origin?.lastUpdated ?? null,
+    devices: {
+      mac: origin?.devices.mac ?? null,
+      msi: origin?.devices.msi ?? null,
+      phone: origin?.devices.phone ?? null,
+    },
+    writable: false,
+  };
+}
+
+export async function loadSeed(): Promise<DaymeterData> {
+  const meta = await readClientSeedMeta();
+  const data = hydrateMeta(meta);
   const daySet = new Set<string>(data.days);
   for (const day of Object.keys(data.phones)) daySet.add(day);
   data.days = [...daySet].sort();
@@ -146,7 +172,17 @@ export async function loadDaymeter(): Promise<DaymeterData> {
       }
     }
   } catch {
-    /* seed fallback */
+    /* origin / seed fallback */
   }
-  return loadSeed();
+
+  const seed = await readClientSeedMeta();
+  const origin = await readOrigin();
+  const meta = mergeMeta(seed, origin);
+  const data = hydrateMeta(meta, {
+    freshness: originFreshness(origin, meta.lastUpdated ?? origin?.lastUpdated ?? seed.lastUpdated ?? null),
+  });
+  const daySet = new Set<string>(data.days);
+  for (const day of Object.keys(data.phones)) daySet.add(day);
+  data.days = [...daySet].sort();
+  return data;
 }

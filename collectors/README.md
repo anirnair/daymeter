@@ -1,6 +1,6 @@
 # Daymeter collectors
 
-Push a look at least every **1–2 minutes**. The dashboard polls `/api/live` every 60s. A few minutes of lag is the point — not another frozen GitHub copy.
+The dashboard polls `/api/live` every 60s. When that route is missing, it still pulls Writer from Origin dashboard11 (CORS is already open there). A few minutes of lag is the point — not another frozen GitHub copy.
 
 Production:
 
@@ -48,7 +48,7 @@ For clocks, also POST sessions from Usage Access:
 
 Seconds win over gap estimates. Those looks get a Phone lane, hour cells, and per-app bars.
 
-Until Writer is retargeted, you can POST the same JSON from Termux / Tasker, or pipe `adb shell dumpsys usagestats` through a small converter. The installed APK still talks to Origin dashboard 9 — leave that up, and **also** POST here so daymeter.vercel.app stays live.
+Until Writer is retargeted, you can POST the same JSON from Termux / Tasker, or pipe `adb shell dumpsys usagestats` through a small converter. The installed APK still talks to Origin dashboard 9 — leave that up. The dashboard pulls that Origin strip so the **reported** line stays current; POSTing sessions here is what puts Phone on the hour grid.
 
 Writer summary (still accepted):
 

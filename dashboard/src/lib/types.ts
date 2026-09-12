@@ -34,7 +34,7 @@ export type PhoneReport = {
 };
 
 export type Freshness = {
-  source: "live" | "seed";
+  source: "live" | "origin" | "seed";
   lastIngest: string | null;
   lastUpdated: string | null;
   devices: Partial<Record<DeviceKey, string | null>>;

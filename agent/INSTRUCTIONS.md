@@ -41,27 +41,27 @@ Near-real-time path:
 
 1. Mac `collectors/mac.sh` every 60s (launchd).
 2. MSI `collectors/windows.ps1` every 60s (Task Scheduler).
-3. Phone: Writer summary **and** session JSON to `/api/ingest`.
-4. Ingest writes Vercel Blob (`daymeter/live.json`, ~60s cache) or local `dashboard/.data/live.json`.
+3. Phone: Writer summary still lands on Origin dashboard 9/11. `GET /api/live` (and the page, if that route 404s) **pulls Origin** so the reported hours/top/switches stay current without retargeting the APK. Also POST `sessions` with clocks to `/api/ingest` when you can.
+4. Ingest writes Vercel Blob (`daymeter/live.json`, ~60s cache) or local `dashboard/.data/live.json`. Merge order is seed < Origin < live POSTs.
 5. Dashboard polls `GET /api/live` every 60s.
 
 Your job each run:
 
-1. `GET /api/live` (and `GET /api/agent`).
-2. Read `freshness.source`, `lastIngest`, per-device timestamps.
+1. `GET /api/live` (and `GET /api/agent`). If `/api/live` 404s, Origin pull is the remaining phone path until this Vite tree is deployed with functions + Blob.
+2. Read `freshness.source` (`live` | `origin` | `seed`), `lastIngest`, per-device timestamps.
 3. If a device is **> 10 minutes** quiet during hours it usually speaks, say the collector is down — do not fill the blank.
 4. Recompute notes from the **actual samples**. `POST /api/agent` with extra `agent-*` notes only when you have something the deterministic engine cannot see (for example a title/URL pattern across several looks).
 5. Do not POST fake looks to make the strip denser.
 
-If ingest returns `blob-missing`, the production project needs a Vercel Blob store (`BLOB_READ_WRITE_TOKEN`). Local Vite does not.
+If ingest returns `blob-missing`, the production project needs a Vercel Blob store (`BLOB_READ_WRITE_TOKEN`). Local Vite does not. Origin pull still works without Blob.
 
 ---
 
 ## Phone accuracy
 
-Writer on the pocket still talks to Origin dashboard 9. That is allowed to stay up. It is **not** enough for daymeter.vercel.app.
+Writer on the pocket still talks to Origin dashboard 9. Leave that up. The live page now **reads** dashboard11 so the reported line on daymeter.vercel.app can move when Writer does.
 
-Accurate phone data is **UsageEvents-shaped sessions**:
+Accurate phone data is still **UsageEvents-shaped sessions**:
 
 ```json
 {

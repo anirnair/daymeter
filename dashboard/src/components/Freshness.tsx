@@ -9,10 +9,12 @@ type Props = {
 export function FreshnessBar({ freshness }: Props) {
   const lagLabel = prettyLag(freshness.lastIngest || freshness.lastUpdated);
   const devices = deviceLagLine(freshness.devices);
-  const live = freshness.source === "live";
+  const live = freshness.source === "live" || freshness.source === "origin";
   return (
     <div className="fresh" aria-label="data freshness">
-      <span className={clsx("fresh-src", live && "on")}>{live ? "live" : "seed"}</span>
+      <span className={clsx("fresh-src", live && "on")}>
+        {freshness.source === "live" ? "live" : freshness.source === "origin" ? "origin" : "seed"}
+      </span>
       <span className="foot-sep"> · </span>
       <span>{lagLabel}</span>
       {devices ? (
@@ -21,7 +23,12 @@ export function FreshnessBar({ freshness }: Props) {
           <span>{devices}</span>
         </>
       ) : null}
-      {!freshness.writable && freshness.source === "seed" ? (
+      {freshness.source === "origin" ? (
+        <>
+          <span className="foot-sep"> · </span>
+          <span>Writer via Origin</span>
+        </>
+      ) : !freshness.writable && freshness.source === "seed" ? (
         <>
           <span className="foot-sep"> · </span>
           <span>collectors POST /api/ingest</span>

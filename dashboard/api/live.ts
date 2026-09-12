@@ -1,4 +1,4 @@
-import { handleLiveGet } from "../src/lib/server";
+import { asNodeHandler, handleLiveGet, json } from "../src/lib/server";
 
 export async function GET() {
   return handleLiveGet();
@@ -14,3 +14,8 @@ export async function OPTIONS() {
     },
   });
 }
+
+export default asNodeHandler(async (incoming) => {
+  if (incoming.method === "GET") return handleLiveGet();
+  return json({ ok: false, error: "method" }, 405);
+});

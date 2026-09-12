@@ -37,7 +37,7 @@ A centered dashboard of the day, not a timesheet or a score.
 
 **Tools** break down the apps. Phone has its own section because you jump more there. A Writer summary is hours + mix + switches. Timestamped sessions split time per app and can sit on the hour grid.
 
-A **live / seed** line under the name says how stale the picture is. The page pulls `/api/live` about once a minute.
+A **live / origin / seed** line under the name says how stale the picture is. The page pulls `/api/live` about once a minute, and if that route is down it still reads Writer from Origin dashboard11.
 
 ---
 
@@ -48,10 +48,8 @@ GitHub `data.json` is a freeze. It goes stale the moment a collector POSTs somew
 Near-real-time (a few minutes lag is fine):
 
 1. **Mac and MSI** POST the frontmost app every 1–2 minutes to `https://daymeter.vercel.app/api/ingest` — scripts in [`collectors/`](collectors/README.md). When a browser is in front, Mac also sends the tab title and URL.
-2. **Phone** still sends a Writer *day-summary* (hours, top apps, switches). That stays. For accurate grain, also POST `sessions` with `ts`, `end`/`seconds`, and `app` so Phone can sit on the hour grid.
-3. The dashboard merges the freeze with a live store (Vercel Blob in production, `dashboard/.data/live.json` on a local Vite). It does not invent marks for the blanks.
-
-The installed Writer APK still talks to Origin dashboard 9. Leave that up, and also point new sends here so this site stays current.
+2. **Phone** still sends a Writer *day-summary* (hours, top apps, switches) to Origin dashboard 9/11. The live page **pulls that Origin strip** on every refresh so the reported line stays current without retargeting the installed APK. For accurate grain, also POST `sessions` with `ts`, `end`/`seconds`, and `app` so Phone can sit on the hour grid.
+3. The dashboard merges seed < Origin < live store (Vercel Blob in production, `dashboard/.data/live.json` on a local Vite). It does not invent marks for the blanks. If `/api/live` is missing, the browser still pulls Origin directly (dashboard11 already allows CORS).
 
 The **behavior agent** (custom instructions in [`agent/INSTRUCTIONS.md`](agent/INSTRUCTIONS.md), Cursor agent in `.cursor/agents/daymeter-behavior.md`) re-reads the live log, checks collector freshness, and writes the second-order section. It never invents samples.
 
