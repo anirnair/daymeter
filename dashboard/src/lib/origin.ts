@@ -185,9 +185,13 @@ function originOccupied(store: LiveStore | null): store is LiveStore {
 }
 
 async function fetchText(url: string, signal: AbortSignal): Promise<string> {
-  const response = await fetch(url, {
+  const response = await fetch(`${url}?t=${Date.now()}`, {
     cache: "no-store",
-    headers: { accept: "text/plain, application/json" },
+    headers: {
+      accept: "text/plain, application/json",
+      "cache-control": "no-cache",
+      pragma: "no-cache",
+    },
     signal,
   });
   if (!response.ok) return "";
@@ -195,9 +199,13 @@ async function fetchText(url: string, signal: AbortSignal): Promise<string> {
 }
 
 async function fetchJson(url: string, signal: AbortSignal): Promise<unknown> {
-  const response = await fetch(url, {
+  const response = await fetch(`${url}?t=${Date.now()}`, {
     cache: "no-store",
-    headers: { accept: "application/json" },
+    headers: {
+      accept: "application/json",
+      "cache-control": "no-cache",
+      pragma: "no-cache",
+    },
     signal,
   });
   if (!response.ok) return null;
