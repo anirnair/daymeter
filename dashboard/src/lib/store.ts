@@ -17,11 +17,18 @@ export function liveWritable(): boolean {
 
 export async function readSeed(): Promise<Meta> {
   const meta: Meta = {};
-  try {
-    const text = await readFile(path.join(process.cwd(), "public", "data.json"), "utf8");
-    Object.assign(meta, JSON.parse(text) as Meta);
-  } catch {
-    /* seed is optional when live is full */
+  const candidates = [
+    path.join(process.cwd(), "public", "data.json"),
+    path.join(process.cwd(), "dashboard", "public", "data.json"),
+  ];
+  for (const file of candidates) {
+    try {
+      const text = await readFile(file, "utf8");
+      Object.assign(meta, JSON.parse(text) as Meta);
+      break;
+    } catch {
+      /* try the next layout */
+    }
   }
   return meta;
 }
