@@ -1,12 +1,5 @@
 {
-  "day": "2026-09-11",
-  "days": ["2026-09-11"],
-  "sentence": null,
-  "phone": {
-    "hours": 0.28,
-    "top": ["com.android.launcher", "com.whatsapp", "com.instagram.android", "in.swiggy.android", "com.coloros.phonemanager"],
-    "day": "2026-09-12"
-  },
+  "days": ["2026-09-11", "2026-09-12"],
   "samples": [
     {"ts": "2026-09-11T21:18:02+0530", "device": "Anirudh-Nair-K4TWXC6H51.local", "app": "Grok Bot"},
     {"ts": "2026-09-11T21:19:19+0530", "device": "MSI", "app": "Grok Bot"},
@@ -15,5 +8,14 @@
     {"ts": "2026-09-11T22:44:02+0530", "device": "MSI", "app": "chrome"},
     {"ts": "2026-09-11T22:57:15+0530", "device": "MSI", "app": "chrome"}
   ],
+  "phones": {
+    "2026-09-12": {
+      "hours": 0.28,
+      "top": ["com.android.launcher", "com.whatsapp", "com.instagram.android", "in.swiggy.android", "com.coloros.phonemanager"],
+      "switches": 126,
+      "day": "2026-09-12"
+    }
+  },
+  "sentences": {},
   "lastUpdated": "2026-09-12T00:23:16+0530"
 }
