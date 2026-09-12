@@ -232,6 +232,126 @@ function parseForm(text: string): ParsedIngest {
   return parseObject(fields);
 }
 
+const DUMPSYS_FG =
+  /MOVE_TO_FOREGROUND|ACTIVITY_RESUMED|ACTIVITY_STARTED|(?:^|[^\d])type=1(?:[^\d]|$)/i;
+const DUMPSYS_BG =
+  /MOVE_TO_BACKGROUND|ACTIVITY_PAUSED|ACTIVITY_STOPPED|ACTIVITY_DESTROYED|(?:^|[^\d])type=(?:2|23|24)(?:[^\d]|$)/i;
+
+export function looksLikeDumpsys(text: string): boolean {
+  return /MOVE_TO_FOREGROUND|ACTIVITY_RESUMED|Usage events|dumpsys usagestats|MOVE_TO_BACKGROUND/i.test(
+    text,
+  );
+}
+
+function pad2(n: number): string {
+  return String(n).padStart(2, "0");
+}
+
+function dumpsysTs(line: string): string | null {
+  const iso = line.match(/(\d{4}-\d{2}-\d{2})[ T](\d{2}:\d{2}:\d{2})/);
+  if (iso) return coerceTs(`${iso[1]}T${iso[2]}`);
+  const epoch = line.match(/\btime[=:]?\s*["']?(\d{12,13})\b/);
+  if (epoch) return coerceTs(Number(epoch[1]));
+  const numbered = line.match(/(\d{1,2})-(\d{1,2})-(\d{4})[ T](\d{2}:\d{2}:\d{2})/);
+  if (numbered) {
+    const a = Number(numbered[1]);
+    const b = Number(numbered[2]);
+    const year = numbered[3];
+    const clock = numbered[4];
+    if (!a || !b) return null;
+    const dayFirst = a > 12;
+    const month = dayFirst ? b : a;
+    const day = dayFirst ? a : b;
+    if (month < 1 || month > 12 || day < 1 || day > 31) return null;
+    return coerceTs(`${year}-${pad2(month)}-${pad2(day)}T${clock}`);
+  }
+  return null;
+}
+
+function dumpsysPackage(line: string): string | null {
+  const named = line.match(/\bpackage[=:]?\s*["']?([A-Za-z][A-Za-z0-9._]+)/);
+  if (named) return named[1];
+  const slash = line.match(/\b([a-z][A-Za-z0-9_]*(\.[A-Za-z0-9_]+)+)\//);
+  if (slash) return slash[1];
+  return null;
+}
+
+function dumpsysKind(line: string): "fg" | "bg" | null {
+  if (DUMPSYS_BG.test(line)) return "bg";
+  if (DUMPSYS_FG.test(line)) return "fg";
+  return null;
+}
+
+function sessionSample(app: string, start: string, end: string): RawSample | null {
+  const seconds = (parseIso(end) - parseIso(start)) / 1000;
+  if (!Number.isFinite(seconds) || seconds <= 0) return null;
+  return {
+    ts: start,
+    end,
+    device: "phone",
+    app,
+    seconds,
+    bundle: app,
+  };
+}
+
+export function parseDumpsys(text: string): ParsedIngest {
+  type Ev = { ts: string; ms: number; app: string; kind: "fg" | "bg" };
+  const events: Ev[] = [];
+  for (const line of text.split(/\r?\n/)) {
+    const kind = dumpsysKind(line);
+    if (!kind) continue;
+    const app = dumpsysPackage(line);
+    const ts = dumpsysTs(line);
+    if (!app || !ts) continue;
+    const ms = parseIso(ts);
+    if (!Number.isFinite(ms)) continue;
+    events.push({ ts, ms, app, kind });
+  }
+  events.sort((a, b) => a.ms - b.ms || a.kind.localeCompare(b.kind));
+
+  const open = new Map<string, string>();
+  const samples: RawSample[] = [];
+
+  const close = (app: string, end: string) => {
+    const start = open.get(app);
+    if (!start) return;
+    open.delete(app);
+    const sample = sessionSample(app, start, end);
+    if (sample) samples.push(sample);
+  };
+
+  for (const ev of events) {
+    if (ev.kind === "fg") {
+      for (const app of [...open.keys()]) {
+        if (app !== ev.app) close(app, ev.ts);
+      }
+      if (open.has(ev.app)) close(ev.app, ev.ts);
+      open.set(ev.app, ev.ts);
+    } else {
+      close(ev.app, ev.ts);
+    }
+  }
+
+  return { samples, phones: [] };
+}
+
+function mergeParsed(parts: ParsedIngest[]): ParsedIngest {
+  const samples: RawSample[] = [];
+  const phones: PhoneReport[] = [];
+  const seen = new Set<string>();
+  for (const part of parts) {
+    for (const sample of part.samples) {
+      const id = sampleIdentity(sample);
+      if (seen.has(id)) continue;
+      seen.add(id);
+      samples.push(sample);
+    }
+    phones.push(...part.phones);
+  }
+  return { samples, phones };
+}
+
 export function parseIngestBody(raw: string, contentType = ""): ParsedIngest {
   const type = contentType.toLowerCase();
   const text = raw.replace(/^\uFEFF/, "").trim();
@@ -240,6 +360,9 @@ export function parseIngestBody(raw: string, contentType = ""): ParsedIngest {
   if (type.includes("application/x-www-form-urlencoded")) return parseForm(text);
   if (type.includes("text/tab-separated") || (!text.startsWith("{") && !text.startsWith("[") && text.includes("\t"))) {
     return parseTsv(text);
+  }
+  if (!text.startsWith("{") && !text.startsWith("[") && looksLikeDumpsys(text)) {
+    return parseDumpsys(text);
   }
 
   try {
@@ -257,8 +380,18 @@ export function parseIngestBody(raw: string, contentType = ""): ParsedIngest {
       }
       return { samples, phones };
     }
-    if (parsed && typeof parsed === "object") return parseObject(parsed as Record<string, unknown>);
+    if (parsed && typeof parsed === "object") {
+      const rec = parsed as Record<string, unknown>;
+      const parts = [parseObject(rec)];
+      const dumpText =
+        (typeof rec.dumpsys === "string" && rec.dumpsys) ||
+        (typeof rec.usagestats === "string" && rec.usagestats) ||
+        "";
+      if (dumpText && looksLikeDumpsys(dumpText)) parts.push(parseDumpsys(dumpText));
+      return mergeParsed(parts);
+    }
   } catch {
+    if (looksLikeDumpsys(text)) return parseDumpsys(text);
     if (text.includes("\t")) return parseTsv(text);
   }
   return { samples: [], phones: [] };

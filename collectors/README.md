@@ -48,7 +48,16 @@ For clocks, also POST sessions from Usage Access:
 
 Seconds win over gap estimates. Those looks get a Phone lane, hour cells, and per-app bars.
 
-Until Writer is retargeted, you can POST the same JSON from Termux / Tasker, or pipe `adb shell dumpsys usagestats` through a small converter. The installed APK still talks to Origin dashboard 9 — leave that up. The dashboard pulls that Origin strip so the **reported** line stays current; POSTing sessions here is what puts Phone on the hour grid.
+Until Writer is retargeted, POST the same JSON from Termux / Tasker, or pipe UsageEvents:
+
+```bash
+adb shell dumpsys usagestats | python3 collectors/phone-dumpsys.py
+# or POST the raw dump
+adb shell dumpsys usagestats | curl -sS -X POST https://daymeter.vercel.app/api/ingest \
+  -H "Content-Type: text/plain" --data-binary @-
+```
+
+Foreground without a later pause is dropped — a gap is missing, not idle. The installed APK still talks to Origin dashboard 9 — leave that up. The dashboard pulls that Origin strip so the **reported** line stays current; POSTing sessions here is what puts Phone on the hour grid.
 
 Writer summary (still accepted):
 

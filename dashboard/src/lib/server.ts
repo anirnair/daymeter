@@ -3,7 +3,7 @@ import { generateBehavior } from "./behavior";
 import { applyIngest, mergeMeta, parseIngestBody } from "./ingest";
 import { hydrateMeta } from "./load";
 import { readOrigin } from "./origin";
-import { liveWritable, readLive, readSeed, writeLive } from "./store";
+import { liveBackend, liveWritable, readLive, readSeed, writeLive } from "./store";
 import type { DaymeterData, PhoneReport } from "./types";
 
 export const CORS = {
@@ -17,6 +17,16 @@ export function json(data: unknown, status = 200, extra: Record<string, string> 
   return new Response(JSON.stringify(data), {
     status,
     headers: { "Content-Type": "application/json; charset=utf-8", ...CORS, ...extra },
+  });
+}
+
+export function ingestHello(): Response {
+  return json({
+    ok: true,
+    post: "JSON samples, phone sessions, Writer summary, dumpsys usagestats, or TSV",
+    header: "x-daymeter-token or ?k=",
+    writable: liveWritable(),
+    backend: liveBackend(),
   });
 }
 
@@ -111,8 +121,8 @@ export async function handleIngestPost(url: string, headers: Headers, body: stri
     return json(
       {
         ok: false,
-        error: "blob-missing",
-        hint: "Add a Vercel Blob store so BLOB_READ_WRITE_TOKEN exists. Local Vite writes dashboard/.data/live.json.",
+        error: "store-missing",
+        hint: "Local Vite writes dashboard/.data/live.json. On Vercel, ingest uses Runtime Cache, or Blob when BLOB_READ_WRITE_TOKEN is set.",
       },
       501,
     );
@@ -131,13 +141,24 @@ export async function handleIngestPost(url: string, headers: Headers, body: stri
   next.notesAt = stamp;
   const written = await writeLive(next);
   if (!written.ok) {
-    return json({ ok: false, error: written.reason || "write-failed" }, 500);
+    return json(
+      {
+        ok: false,
+        error: written.reason || "write-failed",
+        hint:
+          written.reason === "runtime-cache-write-failed" || written.reason === "runtime-cache-missing"
+            ? "Runtime Cache write failed. Add a Vercel Blob store so BLOB_READ_WRITE_TOKEN exists."
+            : undefined,
+      },
+      500,
+    );
   }
   return json({
     ok: true,
     accepted: { samples: parsed.samples.length, phones: parsed.phones.length },
     stored: { samples: next.samples.length, phones: Object.keys(next.phones).length },
     lastIngest: next.lastIngest,
+    backend: liveBackend(),
   });
 }
 

@@ -42,18 +42,18 @@ Near-real-time path:
 1. Mac `collectors/mac.sh` every 60s (launchd).
 2. MSI `collectors/windows.ps1` every 60s (Task Scheduler).
 3. Phone: Writer summary still lands on Origin dashboard 9/11. `GET /api/live` (and the page, if that route 404s) **pulls Origin** so the reported hours/top/switches stay current without retargeting the APK. Also POST `sessions` with clocks to `/api/ingest` when you can.
-4. Ingest writes Vercel Blob (`daymeter/live.json`, ~60s cache) or local `dashboard/.data/live.json`. Merge order is seed < Origin < live POSTs.
+4. Ingest writes Vercel Runtime Cache on production (Blob when `BLOB_READ_WRITE_TOKEN` exists) or local `dashboard/.data/live.json`. Merge order is seed < Origin < live POSTs.
 5. Dashboard polls `GET /api/live` every 60s.
 
 Your job each run:
 
-1. `GET /api/live` (and `GET /api/agent`). If `/api/live` 404s, Origin pull is the remaining phone path until this Vite tree is deployed with functions + Blob.
-2. Read `freshness.source` (`live` | `origin` | `seed`), `lastIngest`, per-device timestamps.
+1. `GET /api/live` (and `GET /api/agent`). If `/api/live` 404s, Origin pull is the remaining phone path until functions are on the site.
+2. Read `freshness.source` (`live` | `origin` | `seed`), `lastIngest`, `freshness.writable`, per-device timestamps.
 3. If a device is **> 10 minutes** quiet during hours it usually speaks, say the collector is down — do not fill the blank.
 4. Recompute notes from the **actual samples**. `POST /api/agent` with extra `agent-*` notes only when you have something the deterministic engine cannot see (for example a title/URL pattern across several looks).
 5. Do not POST fake looks to make the strip denser.
 
-If ingest returns `blob-missing`, the production project needs a Vercel Blob store (`BLOB_READ_WRITE_TOKEN`). Local Vite does not. Origin pull still works without Blob.
+`GET /api/ingest` reports `writable` and `backend` (`blob` | `runtime-cache` | `local`). If POST ingest fails, say so. Origin pull still works without a live store.
 
 ---
 
@@ -74,7 +74,7 @@ Accurate phone data is still **UsageEvents-shaped sessions**:
 
 Until those exist, treat 0.28h / 126 jumps / launcher-WhatsApp-Instagram-Swiggy-Phone Manager as a **summary**, not a timeline. Push (in notes, not in invented events) for:
 
-- Writer, Tasker, or Termux POSTing sessions to `/api/ingest` during the waking day so phone and computers share a calendar date.
+- Writer, Tasker, Termux, or `collectors/phone-dumpsys.py` (`adb shell dumpsys usagestats`) POSTing sessions to `/api/ingest` during the waking day so phone and computers share a calendar date.
 - Per-app seconds, not only a mix list.
 - A switch count that matches the session list.
 

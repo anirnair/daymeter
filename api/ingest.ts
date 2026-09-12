@@ -1,11 +1,7 @@
-import { CORS, asNodeHandler, handleIngestPost, json } from "../dashboard/src/lib/server";
+import { CORS, asNodeHandler, handleIngestPost, ingestHello, json } from "../dashboard/src/lib/server";
 
 export async function GET() {
-  return json({
-    ok: true,
-    post: "JSON samples, phone sessions, Writer summary, or TSV",
-    header: "x-daymeter-token or ?k=",
-  });
+  return ingestHello();
 }
 
 export async function POST(request: Request) {
@@ -19,11 +15,7 @@ export async function OPTIONS() {
 
 export default asNodeHandler(async (incoming) => {
   if (incoming.method === "GET") {
-    return json({
-      ok: true,
-      post: "JSON samples, phone sessions, Writer summary, or TSV",
-      header: "x-daymeter-token or ?k=",
-    });
+    return ingestHello();
   }
   if (incoming.method === "POST") {
     return handleIngestPost(incoming.url, incoming.headers, incoming.body);

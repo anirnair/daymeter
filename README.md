@@ -48,8 +48,8 @@ GitHub `data.json` is a freeze. It goes stale the moment a collector POSTs somew
 Near-real-time (a few minutes lag is fine):
 
 1. **Mac and MSI** POST the frontmost app every 1–2 minutes to `https://daymeter.vercel.app/api/ingest` — scripts in [`collectors/`](collectors/README.md). When a browser is in front, Mac also sends the tab title and URL.
-2. **Phone** still sends a Writer *day-summary* (hours, top apps, switches) to Origin dashboard 9/11. The live page **pulls that Origin strip** on every refresh so the reported line stays current without retargeting the installed APK. For accurate grain, also POST `sessions` with `ts`, `end`/`seconds`, and `app` so Phone can sit on the hour grid.
-3. The dashboard merges seed < Origin < live store (Vercel Blob in production, `dashboard/.data/live.json` on a local Vite). It does not invent marks for the blanks. If `/api/live` is missing, the browser still pulls Origin directly (dashboard11 already allows CORS).
+2. **Phone** still sends a Writer *day-summary* (hours, top apps, switches) to Origin dashboard 9/11. The live page **pulls that Origin strip** on every refresh so the reported line stays current without retargeting the installed APK. For accurate grain, POST `sessions` with `ts`, `end`/`seconds`, and `app`, or pipe `adb shell dumpsys usagestats` through [`collectors/phone-dumpsys.py`](collectors/phone-dumpsys.py) so Phone can sit on the hour grid.
+3. The dashboard merges seed < Origin < live store. Production ingest writes Vercel Runtime Cache (Blob when `BLOB_READ_WRITE_TOKEN` exists). Local Vite writes `dashboard/.data/live.json`. It does not invent marks for the blanks. If `/api/live` is missing, the browser still pulls Origin directly (dashboard11 already allows CORS).
 
 The **behavior agent** (custom instructions in [`agent/INSTRUCTIONS.md`](agent/INSTRUCTIONS.md), Cursor agent in `.cursor/agents/daymeter-behavior.md`) re-reads the live log, checks collector freshness, and writes the second-order section. It never invents samples.
 
@@ -96,7 +96,7 @@ This is the **product home**: the idea, the rules, the live links, and the files
 
 Those two folders are what stay published. They do not turn off when an Origin session ends.
 
-If you connect this GitHub repo to the existing `daymeter` Vercel project, leave the root at the repo (this `vercel.json` builds `dashboard/` and serves `/api/*`). Or set the Vercel root to `dashboard/`. Either way, add a Blob store so collector POSTs can write. Until `/api/live` exists on the site, the page still pulls Writer from Origin dashboard11.
+If you connect this GitHub repo to the existing `daymeter` Vercel project, leave the root at the repo (this `vercel.json` builds `dashboard/` and serves `/api/*`). Or set the Vercel root to `dashboard/`. Collector POSTs write Runtime Cache on Vercel; add a Blob store if you want the live log to survive cache eviction. Until `/api/live` exists on the site, the page still pulls Writer from Origin dashboard11.
 
 The numbered Origin takes (`dashboard` … `dashboard11`, `writer-apk` … `writer-apk4`) are still up too. Writer on the phone currently sends its day-summary to the Origin strip (take 9), which is why that URL needs to stay live as well.
 

@@ -1,6 +1,6 @@
 import type { IncomingMessage, ServerResponse } from "node:http";
 import type { Plugin } from "vite";
-import { CORS, handleAgent, handleIngestPost, handleLiveGet, json, readIncoming, writeNodeResponse } from "./src/lib/server";
+import { CORS, handleAgent, handleIngestPost, handleLiveGet, ingestHello, readIncoming, writeNodeResponse } from "./src/lib/server";
 
 async function apiMiddleware(req: IncomingMessage, res: ServerResponse, next: () => void) {
   const path = req.url?.split("?")[0] || "";
@@ -16,11 +16,7 @@ async function apiMiddleware(req: IncomingMessage, res: ServerResponse, next: ()
     let response: Response;
     if (path === "/api/live" && incoming.method === "GET") response = await handleLiveGet();
     else if (path === "/api/ingest" && incoming.method === "GET") {
-      response = json({
-        ok: true,
-        post: "JSON samples, sessions, Writer summary, or TSV",
-        header: "x-daymeter-token",
-      });
+      response = ingestHello();
     } else if (path === "/api/ingest" && incoming.method === "POST") {
       response = await handleIngestPost(incoming.url, incoming.headers, incoming.body);
     } else if (path === "/api/agent") {

@@ -40,6 +40,41 @@ describe("ingest parse", () => {
     expect(sessions.samples[1]?.seconds).toBe(20);
   });
 
+  it("turns dumpsys UsageEvents into timed phone sessions without inventing a trailing open app", () => {
+    const dump = `
+Usage events for user 0:
+  09-12-2026 00:10:02.000: com.whatsapp/com.whatsapp.HomeActivity type=ACTIVITY_RESUMED
+  09-12-2026 00:10:42.000: com.whatsapp/com.whatsapp.HomeActivity type=ACTIVITY_PAUSED
+  09-12-2026 00:10:42.100: com.instagram.android/com.instagram.mainactivity.MainActivity type=ACTIVITY_RESUMED
+  09-12-2026 00:11:02.000: com.instagram.android/com.instagram.mainactivity.MainActivity type=ACTIVITY_PAUSED
+  09-12-2026 00:11:02.200: com.android.launcher/com.android.launcher.Launcher type=ACTIVITY_RESUMED
+`;
+    const parsed = parseIngestBody(dump);
+    expect(parsed.samples).toHaveLength(2);
+    expect(parsed.samples[0]).toMatchObject({
+      app: "com.whatsapp",
+      device: "phone",
+      seconds: 40,
+    });
+    expect(parsed.samples[1]?.app).toBe("com.instagram.android");
+    expect(parsed.samples[1]?.seconds).toBe(20);
+    expect(parsed.samples.every((row) => row.end)).toBe(true);
+  });
+
+  it("reads package= MOVE_TO_FOREGROUND dumpsys lines and JSON dumpsys fields", () => {
+    const dump = `
+time="2026-09-12 00:10:02" type=MOVE_TO_FOREGROUND package=com.whatsapp
+time="2026-09-12 00:10:42" type=MOVE_TO_BACKGROUND package=com.whatsapp
+`;
+    const fromText = parseIngestBody(dump);
+    expect(fromText.samples).toHaveLength(1);
+    expect(fromText.samples[0]?.seconds).toBe(40);
+
+    const fromJson = parseIngestBody(JSON.stringify({ device: "phone", dumpsys: dump }));
+    expect(fromJson.samples).toHaveLength(1);
+    expect(fromJson.samples[0]?.app).toBe("com.whatsapp");
+  });
+
   it("reads TSV looks", () => {
     const parsed = parseIngestBody("2026-09-11T21:18:02+0530\tmac\tGrok Bot\n");
     expect(parsed.samples[0]?.app).toBe("Grok Bot");
