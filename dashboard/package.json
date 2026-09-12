@@ -11,12 +11,14 @@
   "dependencies": {
     "@base-ui/react": "^1.0.0",
     "@number-flow/react": "^0.5.14",
+    "@vercel/blob": "^2.8.0",
     "clsx": "^2.1.1",
     "motion": "^12.23.12",
     "react": "^19.1.1",
     "react-dom": "^19.1.1"
   },
   "devDependencies": {
+    "@types/node": "^22.20.2",
     "@types/react": "^19.1.13",
     "@types/react-dom": "^19.1.9",
     "@vitejs/plugin-react": "^5.0.2",

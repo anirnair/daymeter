@@ -39,6 +39,7 @@ function samples(): Sample[] {
     id: `${row.ts}|${row.key}|${row.app}|${i}`,
     minutes: 5,
     cls: classifyApp(row.app),
+    explicit: false,
   }));
   return estimateSampleMinutes(list);
 }

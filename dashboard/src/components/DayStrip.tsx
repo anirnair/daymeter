@@ -24,7 +24,7 @@ export function DayStrip({
   onHour,
   coincidenceAt,
 }: Props) {
-  const lanes: DeviceKey[] = ["mac", "msi"];
+  const lanes: DeviceKey[] = ["mac", "msi", "phone"];
   if (!samples.length) {
     return <div className="empty">No looks on this day.</div>;
   }
@@ -75,8 +75,8 @@ export function DayStrip({
                       title={prettyApp(s.app)}
                       lines={[
                         `${DEVICE_LABEL[s.key]} · ${prettyTime(s.ts)} · ${prettyClock(s.ts)}`,
-                        `${CLASS_LABEL[s.cls]} · ${prettyDuration(s.minutes)} on this stretch`,
-                        `look ${index} of ${total} for this app`,
+                        `${CLASS_LABEL[s.cls]} · ${prettyDuration(s.minutes)} ${s.explicit ? "timed" : "on this stretch"}`,
+                        s.title || s.url || s.bundle || `look ${index} of ${total} for this app`,
                       ]}
                     >
                       <button

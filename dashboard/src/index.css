@@ -501,6 +501,7 @@ number-flow-react {
 
 .cell.on.mac { background: var(--mac); }
 .cell.on.msi { background: var(--msi); }
+.cell.on.phone { background: var(--phone); }
 .cell.selected {
   box-shadow: inset 0 0 0 1px var(--ink);
 }
@@ -532,6 +533,7 @@ number-flow-react {
 .log-row .d { color: var(--dim); }
 .log-row .dev.mac { color: var(--mac); }
 .log-row .dev.msi { color: var(--msi); }
+.log-row .dev.phone { color: var(--phone); }
 .log-row .cls { color: var(--dim); }
 .log-row .name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .log-row .n { color: var(--dim); }
@@ -581,7 +583,50 @@ number-flow-react {
 .inspector-title { color: var(--ink); }
 .inspector-detail { color: var(--dim); }
 
-.foot-sep { color: var(--mute); }
+.fresh {
+  color: var(--dim);
+  text-align: center;
+  max-width: 100%;
+}
+
+.fresh-src.on { color: var(--msi); }
+
+.behavior-group {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+
+.behavior-group h3 {
+  margin: 11px 0 0;
+  font-size: var(--fs);
+  font-weight: 400;
+  letter-spacing: 0.06em;
+  color: var(--dim);
+}
+
+.behavior-group h3.waste { color: var(--hot); }
+.behavior-group h3.recovery { color: var(--phone); }
+.behavior-group h3.improve { color: var(--msi); }
+
+.insight .evidence {
+  color: var(--dim);
+  margin-top: 4px;
+  opacity: 0.85;
+}
+
+.matrix-row .lab.phone { color: var(--phone); }
+.matrix-row .lab.mac { color: var(--mac); }
+.matrix-row .lab.msi { color: var(--msi); }
+
+.phone-app {
+  grid-template-columns: minmax(0, 1fr) auto;
+}
+
+.phone-app:has(.bar-track) {
+  grid-template-columns: minmax(72px, 28%) minmax(0, 1fr) auto;
+}
 
 .tool-row,
 .phone-app {

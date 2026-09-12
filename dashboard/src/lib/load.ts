@@ -1,25 +1,19 @@
 import { classifyApp } from "./classify";
 import { deviceKey, dayKey, parseIso, hourFrac } from "./format";
+import { emptyFreshness } from "./freshness";
 import { estimateSampleMinutes, parsePhoneLine } from "./metrics";
-import type { DaymeterData, PhoneReport, RawSample, Sample } from "./types";
+import { normalizePhone } from "./ingest";
+import type { DaymeterData, Meta, PhoneReport, RawSample, Sample } from "./types";
 
-type Meta = {
-  samples?: RawSample[];
-  lastUpdated?: string;
-  day?: string;
-  phone?: { hours: number; top?: string[]; switches?: number; day?: string };
-  phones?: Record<string, PhoneReport | { hours: number; top?: string[]; switches?: number; day?: string }>;
-  sentences?: Record<string, string | null>;
-};
-
-function asSample(raw: RawSample, i: number): Sample | null {
+export function asSample(raw: RawSample, i: number): Sample | null {
   const ms = parseIso(raw.ts);
   if (!Number.isFinite(ms)) return null;
   const key = deviceKey(raw.device);
-  if (key === "phone") return null;
   const h = hourFrac(raw.ts);
   if (h == null) return null;
   const app = (raw.app || "").trim();
+  const explicit = Boolean(raw.seconds && raw.seconds > 0) || Boolean(raw.end);
+  const minutes = raw.seconds && raw.seconds > 0 ? raw.seconds / 60 : 5;
   return {
     ...raw,
     app,
@@ -27,91 +21,42 @@ function asSample(raw: RawSample, i: number): Sample | null {
     ms,
     h,
     id: `${raw.ts}|${key}|${app}|${i}`,
-    minutes: 5,
+    minutes,
     cls: classifyApp(app),
+    explicit,
   };
 }
 
-function normalizePhone(
-  day: string,
-  phone: { hours: number; top?: string[]; switches?: number; day?: string },
-): PhoneReport {
-  return {
-    day: phone.day || day,
-    hours: Number(phone.hours),
-    top: phone.top ?? [],
-    switches: phone.switches ?? null,
-  };
-}
-
-export async function loadDaymeter(): Promise<DaymeterData> {
+export function hydrateMeta(meta: Meta, extras?: Partial<DaymeterData>): DaymeterData {
   let samples: Sample[] = [];
   const phones: Record<string, PhoneReport> = {};
-  let lastUpdated: string | null = null;
+  let lastUpdated: string | null = meta.lastUpdated ?? null;
 
-  try {
-    const res = await fetch("./data.json", { cache: "no-store" });
-    if (res.ok) {
-      const meta = (await res.json()) as Meta;
-      if (meta.lastUpdated) lastUpdated = meta.lastUpdated;
-      if (Array.isArray(meta.samples)) {
-        samples = meta.samples.map(asSample).filter((s): s is Sample => s != null);
-      }
-      if (meta.phones) {
-        for (const [day, phone] of Object.entries(meta.phones)) {
-          const record = phone as {
-            hours: number;
-            top?: string[];
-            switches?: number | null;
-            day?: string;
-          };
-          phones[record.day || day] = normalizePhone(day, {
-            hours: record.hours,
-            top: record.top,
-            switches: record.switches ?? undefined,
-            day: record.day,
-          });
-        }
-      } else if (meta.phone) {
-        const day = meta.phone.day || meta.day || dayKey(meta.lastUpdated || "") || "";
-        if (day) phones[day] = normalizePhone(day, meta.phone);
-      }
-    }
-  } catch {
-    /* fall through to TSV */
+  if (Array.isArray(meta.samples)) {
+    samples = meta.samples.map(asSample).filter((s): s is Sample => s != null);
   }
-
-  if (!samples.length) {
-    try {
-      const tsv = await fetch("./foreground-samples.tsv", { cache: "no-store" });
-      if (tsv.ok) {
-        const text = await tsv.text();
-        samples = text
-          .trim()
-          .split(/\n+/)
-          .filter(Boolean)
-          .map((line, i) => {
-            const [ts, device, app] = line.split("\t");
-            return asSample({ ts, device, app: (app || "").trim() }, i);
-          })
-          .filter((s): s is Sample => s != null);
-      }
-    } catch {
-      /* empty log */
+  if (meta.phones) {
+    for (const [day, phone] of Object.entries(meta.phones)) {
+      const record = phone as {
+        hours: number;
+        top?: string[];
+        switches?: number | null;
+        day?: string;
+        sampled?: boolean;
+      };
+      const normalized = normalizePhone(record.day || day, {
+        hours: record.hours,
+        top: record.top,
+        switches: record.switches ?? undefined,
+        day: record.day,
+        sampled: record.sampled,
+      });
+      if (normalized) phones[normalized.day] = normalized;
     }
-  }
-
-  try {
-    const pr = await fetch("./phone-reported.tsv", { cache: "no-store" });
-    if (pr.ok) {
-      const text = await pr.text();
-      for (const line of text.trim().split(/\n+/)) {
-        const parsed = parsePhoneLine(line);
-        if (parsed) phones[parsed.day] = parsed;
-      }
-    }
-  } catch {
-    /* optional */
+  } else if (meta.phone) {
+    const day = meta.phone.day || meta.day || dayKey(meta.lastUpdated || "") || "";
+    const normalized = normalizePhone(day, meta.phone);
+    if (normalized) phones[normalized.day] = normalized;
   }
 
   samples = estimateSampleMinutes(samples);
@@ -123,6 +68,85 @@ export async function loadDaymeter(): Promise<DaymeterData> {
   }
   for (const day of Object.keys(phones)) daySet.add(day);
 
-  const days = [...daySet].sort();
-  return { samples, phones, days, lastUpdated };
+  return {
+    samples,
+    phones,
+    days: [...daySet].sort(),
+    lastUpdated,
+    freshness: extras?.freshness ?? emptyFreshness(lastUpdated),
+    notes: extras?.notes ?? [],
+  };
+}
+
+export async function loadSeed(): Promise<DaymeterData> {
+  let meta: Meta = {};
+  try {
+    const res = await fetch("./data.json", { cache: "no-store" });
+    if (res.ok) meta = (await res.json()) as Meta;
+  } catch {
+    /* fall through */
+  }
+
+  if (!meta.samples?.length) {
+    try {
+      const tsv = await fetch("./foreground-samples.tsv", { cache: "no-store" });
+      if (tsv.ok) {
+        const text = await tsv.text();
+        meta.samples = text
+          .trim()
+          .split(/\n+/)
+          .filter(Boolean)
+          .map((line) => {
+            const [ts, device, app] = line.split("\t");
+            return { ts, device, app: (app || "").trim() };
+          });
+      }
+    } catch {
+      /* empty log */
+    }
+  }
+
+  const data = hydrateMeta(meta);
+
+  try {
+    const pr = await fetch("./phone-reported.tsv", { cache: "no-store" });
+    if (pr.ok) {
+      const text = await pr.text();
+      for (const line of text.trim().split(/\n+/)) {
+        const parsed = parsePhoneLine(line);
+        if (parsed) data.phones[parsed.day] = parsed;
+      }
+    }
+  } catch {
+    /* optional */
+  }
+
+  const daySet = new Set<string>(data.days);
+  for (const day of Object.keys(data.phones)) daySet.add(day);
+  data.days = [...daySet].sort();
+  return data;
+}
+
+export async function loadDaymeter(): Promise<DaymeterData> {
+  try {
+    const res = await fetch("/api/live", { cache: "no-store" });
+    if (res.ok) {
+      const live = (await res.json()) as DaymeterData;
+      if (live && Array.isArray(live.samples)) {
+        return {
+          ...hydrateMeta(
+            {
+              samples: live.samples,
+              phones: live.phones,
+              lastUpdated: live.lastUpdated ?? undefined,
+            },
+            { freshness: live.freshness, notes: live.notes },
+          ),
+        };
+      }
+    }
+  } catch {
+    /* seed fallback */
+  }
+  return loadSeed();
 }

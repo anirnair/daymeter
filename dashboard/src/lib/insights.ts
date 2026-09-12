@@ -105,7 +105,9 @@ export function generateInsights(
         kicker: "phone",
         title: `${prettyDuration(phoneMin)} on phone, ${phone.switches} jumps — about every ${every}s (${phoneRate}/hr).`,
         detail:
-          `Writer reports a day-summary, not a clock for each app.${vs} ${mix ? `In the mix: ${mix}.` : ""} Phone time is not placed on the hour grid because we do not have hourly phone samples.`,
+          phone.sampled
+            ? `Those jumps are from timestamped phone sessions, so this line can sit on the hour grid.${vs} ${mix ? `In the mix: ${mix}.` : ""}`
+            : `Writer reports a day-summary, not a clock for each app.${vs} ${mix ? `In the mix: ${mix}.` : ""} Phone time is not placed on the hour grid until sessions arrive with start times.`,
         slice: { device: "phone" },
       });
     }
@@ -116,7 +118,9 @@ export function generateInsights(
       id: "phone-only",
       kicker: "phone",
       title: "This cut is phone-only. No Mac or MSI looks sit here.",
-      detail: "Phone is reported, not sampled. There is no minute-by-minute lane to draw.",
+      detail: phone.sampled
+        ? "Phone sessions are in the looks log. The Mac and MSI lanes are empty in this cut."
+        : "Phone is reported, not sampled. There is no minute-by-minute lane to draw until sessions include clocks.",
     });
   }
 

@@ -1,0 +1,18 @@
+{
+  "device": "phone",
+  "sessions": [
+    {
+      "ts": "2026-09-12T00:10:02+0530",
+      "end": "2026-09-12T00:10:42+0530",
+      "app": "com.whatsapp",
+      "seconds": 40,
+      "title": "WhatsApp"
+    },
+    {
+      "ts": "2026-09-12T00:10:42+0530",
+      "end": "2026-09-12T00:11:08+0530",
+      "app": "com.instagram.android",
+      "seconds": 26
+    }
+  ]
+}
