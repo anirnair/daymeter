@@ -4,6 +4,11 @@ import { DeviceSplit } from "./components/DeviceSplit";
 import { DayStrip } from "./components/DayStrip";
 import { ToolsChart } from "./components/ToolsChart";
 import { PhoneBreakdown } from "./components/PhoneBreakdown";
+import { FilterBar } from "./components/FilterBar";
+import { InsightBoard } from "./components/InsightBoard";
+import { HourMatrix } from "./components/HourMatrix";
+import { EventLog } from "./components/EventLog";
+import { Inspector } from "./components/Inspector";
 import { loadDaymeter } from "./lib/load";
 import {
   DEVICE_LABEL,
@@ -12,8 +17,17 @@ import {
   prettyDuration,
   prettyUpdated,
 } from "./lib/format";
-import { appMinutes, deviceMinutes, jumpsPerHour, phoneMinutes } from "./lib/metrics";
-import type { DaymeterData, DeviceKey, PhoneReport, Sample } from "./lib/types";
+import {
+  appMinutes,
+  coincidences,
+  deviceMinutes,
+  jumpsPerHour,
+  overlapHalfHours,
+  phoneMinutes,
+} from "./lib/metrics";
+import { applyPhoneSlice, applySampleSlice, EMPTY_SLICE, matchSample, sliceActive } from "./lib/filters";
+import { generateInsights } from "./lib/insights";
+import type { DaymeterData, DeviceKey, PhoneReport, Sample, Slice } from "./lib/types";
 
 function samplesFor(data: DaymeterData, day: string | "all"): Sample[] {
   if (day === "all") return data.samples;
@@ -36,8 +50,8 @@ function dateLabel(data: DaymeterData, day: string | "all"): string {
 export default function App() {
   const [data, setData] = useState<DaymeterData | null>(null);
   const [day, setDay] = useState<string | "all">("all");
-  const [device, setDevice] = useState<DeviceKey | "all">("all");
-  const [app, setApp] = useState<string | null>(null);
+  const [slice, setSlice] = useState<Slice>(EMPTY_SLICE);
+  const [selectedId, setSelectedId] = useState<string | null>(null);
   const [animateHero, setAnimateHero] = useState(false);
 
   useEffect(() => {
@@ -53,32 +67,42 @@ export default function App() {
   }, [data]);
 
   const daySamples = useMemo(() => (data ? samplesFor(data, day) : []), [data, day]);
-
   const dayPhone = useMemo(() => {
     if (!data) return null;
     return phonesFor(data, day)[0] ?? null;
   }, [data, day]);
 
-  const viewSamples = useMemo(() => {
-    let list = daySamples;
-    if (device === "phone") list = [];
-    else if (device !== "all") list = list.filter((s) => s.key === device);
-    if (app) list = list.filter((s) => s.app === app);
-    return list;
-  }, [daySamples, device, app]);
+  const viewSamples = useMemo(() => applySampleSlice(daySamples, slice), [daySamples, slice]);
+  const phone = useMemo(() => applyPhoneSlice(dayPhone, slice), [dayPhone, slice]);
+  const both = useMemo(() => overlapHalfHours(daySamples), [daySamples]);
+  const sameSecond = useMemo(() => coincidences(daySamples), [daySamples]);
 
-  const phone = device === "mac" || device === "msi" ? null : dayPhone;
-
+  const computerMin = viewSamples.reduce((n, s) => n + s.minutes, 0);
   const dayMacMin = deviceMinutes(daySamples, "mac");
   const dayMsiMin = deviceMinutes(daySamples, "msi");
   const dayPhoneMin = phoneMinutes(dayPhone);
-  const total =
-    device === "mac" ? dayMacMin : device === "msi" ? dayMsiMin : device === "phone" ? dayPhoneMin : dayMacMin + dayMsiMin + dayPhoneMin;
+  const phoneMinSlice = phoneMinutes(phone);
+  const total = computerMin + phoneMinSlice;
+
+  const macMinSlice = viewSamples.filter((s) => s.key === "mac").reduce((n, s) => n + s.minutes, 0);
+  const msiMinSlice = viewSamples.filter((s) => s.key === "msi").reduce((n, s) => n + s.minutes, 0);
+  const shareTotal = Math.max(total, 0.001);
 
   const dayRef = useRef(day);
   const dayOrderRef = useRef(dayOrder);
   dayRef.current = day;
   dayOrderRef.current = dayOrder;
+
+  function patchSlice(next: Partial<Slice>) {
+    setAnimateHero(true);
+    setSlice((cur) => ({ ...cur, ...next }));
+  }
+
+  function clearSlice() {
+    setAnimateHero(false);
+    setSlice(EMPTY_SLICE);
+    setSelectedId(null);
+  }
 
   function shiftDay(delta: number) {
     const order = dayOrderRef.current;
@@ -88,14 +112,13 @@ export default function App() {
     if (next) {
       setAnimateHero(false);
       setDay(next);
-      setApp(null);
-      setDevice("all");
+      clearSlice();
     }
   }
 
   function selectDevice(key: DeviceKey | "all") {
     setAnimateHero(true);
-    setDevice(key);
+    setSlice((cur) => ({ ...cur, device: key }));
   }
 
   useEffect(() => {
@@ -104,8 +127,8 @@ export default function App() {
       if (e.key === "ArrowRight") shiftDay(1);
       if (e.key === "Escape") {
         setAnimateHero(false);
-        setApp(null);
-        setDevice("all");
+        setSlice(EMPTY_SLICE);
+        setSelectedId(null);
       }
     };
     window.addEventListener("keydown", onKey);
@@ -121,13 +144,9 @@ export default function App() {
     );
   }
 
-  const macMinSlice = device === "all" || device === "mac" ? dayMacMin : 0;
-  const msiMinSlice = device === "all" || device === "msi" ? dayMsiMin : 0;
-  const phoneMinSlice = device === "all" || device === "phone" ? dayPhoneMin : 0;
-  const shareTotal = Math.max(total, 0.001);
   const i = dayOrder.indexOf(day);
   const tools = appMinutes(viewSamples);
-  const jumpSource = device === "phone" ? daySamples : viewSamples;
+  const jumpSource = slice.device === "phone" ? daySamples : viewSamples;
   const computerJumps = (["mac", "msi"] as const).map((key) => {
     const list = jumpSource.filter((s) => s.key === key);
     return { name: DEVICE_LABEL[key], jumps: Math.round(jumpsPerHour(list)), tone: key } as const;
@@ -135,9 +154,14 @@ export default function App() {
 
   const macLooks = daySamples.filter((s) => s.key === "mac").length;
   const msiLooks = daySamples.filter((s) => s.key === "msi").length;
-  const showPhoneSection = Boolean(phone && (device === "all" || device === "phone"));
-  const showStrip = viewSamples.length > 0;
-  const showTools = tools.length > 0;
+  const daysInView = day === "all" ? data.days : [day];
+  const insights = generateInsights(daySamples, dayPhone, slice, daysInView);
+  const selected = daySamples.find((s) => s.id === selectedId) ?? viewSamples.find((s) => s.id === selectedId) ?? null;
+  const showPhoneSection = Boolean(phone);
+  const showStrip = daySamples.some((s) => s.key === "mac" || s.key === "msi") && slice.device !== "phone";
+  const showMatrix = showStrip;
+  const showLog = slice.device !== "phone";
+  const sliced = sliceActive(slice);
 
   return (
     <div className="shell">
@@ -170,6 +194,9 @@ export default function App() {
         label={`${prettyDuration(total)} screen time`}
         animated={animateHero}
       />
+      {sliced ? (
+        <div className="hero-lab">in this slice · {viewSamples.length} look{viewSamples.length === 1 ? "" : "s"}{phone ? " + phone" : ""}</div>
+      ) : null}
 
       <div className="share" aria-hidden="true">
         <i className="mac" style={{ width: `${(macMinSlice / shareTotal) * 100}%` }} />
@@ -178,7 +205,7 @@ export default function App() {
       </div>
 
       <DeviceSplit
-        selected={device}
+        selected={slice.device}
         onSelect={selectDevice}
         cards={[
           {
@@ -202,43 +229,92 @@ export default function App() {
         ]}
       />
 
-      {showStrip && (
+      <FilterBar
+        samples={daySamples}
+        phoneApps={dayPhone?.top ?? []}
+        slice={slice}
+        onChange={patchSlice}
+        onClear={clearSlice}
+      />
+
+      {selected ? (
+        <Inspector
+          sample={selected}
+          all={daySamples}
+          onSlice={patchSlice}
+          onClose={() => setSelectedId(null)}
+        />
+      ) : null}
+
+      <InsightBoard rows={insights} onSlice={patchSlice} />
+
+      {showStrip ? (
         <section className="section">
           <h2>across the day</h2>
           <DayStrip
-            samples={viewSamples}
-            deviceFilter={device}
-            appFilter={app}
+            samples={daySamples}
+            match={(s) => matchSample(s, slice, both)}
+            selectedId={selectedId}
+            onSelect={setSelectedId}
+            hour={slice.hour}
+            onHour={(hour) => patchSlice({ hour, band: "all" })}
+            coincidenceAt={sameSecond.map((hit) => hit.mac.h)}
           />
         </section>
-      )}
+      ) : null}
 
-      {showTools && (
+      {showMatrix ? (
+        <HourMatrix
+          samples={applySampleSlice(daySamples, { ...slice, hour: null, band: "all" })}
+          hour={slice.hour}
+          onHour={(hour) => patchSlice({ hour, band: "all" })}
+        />
+      ) : null}
+
+      {tools.length > 0 ? (
         <section className="section">
           <h2>tools</h2>
           <ToolsChart
             rows={tools}
-            selected={app}
-            onSelect={setApp}
+            selected={slice.app}
+            onSelect={(app) => patchSlice({ app })}
             maxMinutes={tools[0]?.minutes ?? 1}
           />
         </section>
-      )}
+      ) : null}
 
-      {showPhoneSection && phone && (
+      {showPhoneSection && phone ? (
         <section className="section">
           <h2>on phone</h2>
-          <PhoneBreakdown phone={phone} computerJumps={computerJumps} />
+          <PhoneBreakdown
+            phone={phone}
+            computerJumps={computerJumps}
+            selected={slice.app}
+            onSelect={(app) => patchSlice({ app })}
+          />
         </section>
-      )}
+      ) : null}
 
-      {!showStrip && !showPhoneSection && (
+      {showLog ? (
+        <EventLog
+          samples={viewSamples}
+          selectedId={selectedId}
+          onSelect={setSelectedId}
+          showDay={day === "all"}
+        />
+      ) : null}
+
+      {!showStrip && !showPhoneSection && !viewSamples.length ? (
         <div className="empty">Nothing on this day yet.</div>
-      )}
+      ) : null}
 
-      {data.lastUpdated && (
-        <div className="foot">Updated {prettyUpdated(data.lastUpdated)}</div>
-      )}
+      {data.lastUpdated ? (
+        <div className="foot">
+          Updated {prettyUpdated(data.lastUpdated)}
+          <span className="foot-sep"> · </span>
+          hard marks are real samples · phone is reported · blanks are missing polls
+        </div>
+      ) : null}
     </div>
   );
 }

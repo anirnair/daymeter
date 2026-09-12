@@ -1,4 +1,5 @@
-import type { DeviceKey, PhoneReport, Sample } from "./types";
+import { classifyApp, halfHour } from "./classify";
+import type { AppClass, DeviceKey, PhoneReport, Sample } from "./types";
 
 const MAX_GAP_MS = 20 * 60 * 1000;
 const TAIL_MS = 5 * 60 * 1000;
@@ -93,6 +94,97 @@ export function sampleIndexOnDevice(samples: Sample[], sample: Sample): { index:
   const list = samples.filter((s) => s.key === sample.key && s.app === sample.app);
   const index = list.findIndex((s) => s.id === sample.id);
   return { index: index + 1, total: list.length };
+}
+
+export function overlapHalfHours(samples: Sample[]): Set<number> {
+  const buckets = new Map<number, Set<DeviceKey>>();
+  for (const s of samples) {
+    if (s.key !== "mac" && s.key !== "msi") continue;
+    const b = halfHour(s.h);
+    const set = buckets.get(b) ?? new Set<DeviceKey>();
+    set.add(s.key);
+    buckets.set(b, set);
+  }
+  const both = new Set<number>();
+  for (const [b, set] of buckets) {
+    if (set.has("mac") && set.has("msi")) both.add(b);
+  }
+  return both;
+}
+
+export function coincidences(samples: Sample[]): { ts: string; mac: Sample; msi: Sample }[] {
+  const bySecond = new Map<string, Sample[]>();
+  for (const s of samples) {
+    const key = s.ts.replace(/\.\d+/, "");
+    const list = bySecond.get(key) ?? [];
+    list.push(s);
+    bySecond.set(key, list);
+  }
+  const out: { ts: string; mac: Sample; msi: Sample }[] = [];
+  for (const [ts, list] of bySecond) {
+    const mac = list.find((s) => s.key === "mac");
+    const msi = list.find((s) => s.key === "msi");
+    if (mac && msi) out.push({ ts, mac, msi });
+  }
+  return out.sort((a, b) => a.ts.localeCompare(b.ts));
+}
+
+export function deviceHops(samples: Sample[]): { ts: string; from: DeviceKey; to: DeviceKey }[] {
+  const tagged = samples
+    .filter((s) => s.key === "mac" || s.key === "msi")
+    .slice()
+    .sort((a, b) => a.ms - b.ms);
+  const hops: { ts: string; from: DeviceKey; to: DeviceKey }[] = [];
+  for (let i = 1; i < tagged.length; i++) {
+    if (tagged[i].key === tagged[i - 1].key) continue;
+    if (Math.abs(tagged[i].ms - tagged[i - 1].ms) < 2000) continue;
+    hops.push({ ts: tagged[i].ts, from: tagged[i - 1].key, to: tagged[i].key });
+  }
+  return hops;
+}
+
+export function hourHistogram(samples: Sample[]): { hour: number; mac: number; msi: number; minutes: number }[] {
+  const map = new Map<number, { mac: number; msi: number; minutes: number }>();
+  for (const s of samples) {
+    const hour = Math.floor(s.h);
+    const cur = map.get(hour) ?? { mac: 0, msi: 0, minutes: 0 };
+    if (s.key === "mac") cur.mac += 1;
+    if (s.key === "msi") cur.msi += 1;
+    cur.minutes += s.minutes;
+    map.set(hour, cur);
+  }
+  return [...map.entries()]
+    .sort((a, b) => a[0] - b[0])
+    .map(([hour, v]) => ({ hour, ...v }));
+}
+
+export function classMinutes(samples: Sample[]): { cls: AppClass; minutes: number; apps: string[] }[] {
+  const map = new Map<AppClass, { minutes: number; apps: Set<string> }>();
+  for (const s of samples) {
+    const cur = map.get(s.cls) ?? { minutes: 0, apps: new Set<string>() };
+    cur.minutes += s.minutes;
+    cur.apps.add(s.app);
+    map.set(s.cls, cur);
+  }
+  return [...map.entries()]
+    .map(([cls, v]) => ({ cls, minutes: v.minutes, apps: [...v.apps] }))
+    .sort((a, b) => b.minutes - a.minutes);
+}
+
+export function phoneClasses(phone: PhoneReport | null): { cls: AppClass; apps: string[] }[] {
+  if (!phone) return [];
+  const map = new Map<AppClass, string[]>();
+  for (const app of phone.top) {
+    const cls = classifyApp(app);
+    const list = map.get(cls) ?? [];
+    list.push(app);
+    map.set(cls, list);
+  }
+  return [...map.entries()].map(([cls, apps]) => ({ cls, apps }));
+}
+
+export function occupiedHours(samples: Sample[]): number[] {
+  return [...new Set(samples.map((s) => Math.floor(s.h)))].sort((a, b) => a - b);
 }
 
 export function parsePhoneLine(line: string): PhoneReport | null {

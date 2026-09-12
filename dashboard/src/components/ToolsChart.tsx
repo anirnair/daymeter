@@ -1,5 +1,6 @@
 import clsx from "clsx";
 import { FloatCard } from "./FloatCard";
+import { CLASS_LABEL, classifyApp } from "../lib/classify";
 import { DEVICE_LABEL, prettyApp, prettyDuration } from "../lib/format";
 import type { DeviceKey } from "../lib/types";
 
@@ -32,7 +33,7 @@ export function ToolsChart({ rows, selected, onSelect, maxMinutes }: Props) {
             title={prettyApp(row.app)}
             lines={[
               prettyDuration(row.minutes),
-              `on ${deviceLine}`,
+              `${CLASS_LABEL[classifyApp(row.app)]} · on ${deviceLine}`,
               "time estimated from how long the app stayed in front",
             ]}
           >

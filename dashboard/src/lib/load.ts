@@ -1,3 +1,4 @@
+import { classifyApp } from "./classify";
 import { deviceKey, dayKey, parseIso, hourFrac } from "./format";
 import { estimateSampleMinutes, parsePhoneLine } from "./metrics";
 import type { DaymeterData, PhoneReport, RawSample, Sample } from "./types";
@@ -18,14 +19,16 @@ function asSample(raw: RawSample, i: number): Sample | null {
   if (key === "phone") return null;
   const h = hourFrac(raw.ts);
   if (h == null) return null;
+  const app = (raw.app || "").trim();
   return {
     ...raw,
-    app: (raw.app || "").trim(),
+    app,
     key,
     ms,
     h,
-    id: `${raw.ts}|${key}|${raw.app}|${i}`,
+    id: `${raw.ts}|${key}|${app}|${i}`,
     minutes: 5,
+    cls: classifyApp(app),
   };
 }
 

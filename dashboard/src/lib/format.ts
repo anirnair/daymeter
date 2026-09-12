@@ -76,6 +76,20 @@ export function prettyTime(ts: string): string {
   return `${hour}:${min} ${suffix}`;
 }
 
+export function prettyClock(ts: string): string {
+  const m = ts.match(/T(\d{2}):(\d{2}):(\d{2})/);
+  if (!m) return prettyTime(ts);
+  return `${m[1]}:${m[2]}:${m[3]}`;
+}
+
+export function prettyHourChip(hour: number): string {
+  const wrapped = ((hour % 24) + 24) % 24;
+  if (wrapped === 0) return "12am";
+  if (wrapped === 12) return "12pm";
+  if (wrapped < 12) return `${wrapped}am`;
+  return `${wrapped - 12}pm`;
+}
+
 export function prettyHourTick(hour: number): string {
   const wrapped = ((hour % 24) + 24) % 24;
   if (wrapped === 0) return "12 am";
