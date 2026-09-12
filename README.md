@@ -96,7 +96,7 @@ This is the **product home**: the idea, the rules, the live links, and the files
 
 Those two folders are what stay published. They do not turn off when an Origin session ends.
 
-If you connect this GitHub repo to the existing `daymeter` Vercel project, leave the root at the repo (this `vercel.json` builds `dashboard/` and serves `/api/*`). Or set the Vercel root to `dashboard/`. Collector POSTs write Runtime Cache on Vercel; add a Blob store if you want the live log to survive cache eviction. Until `/api/live` exists on the site, the page still pulls Writer from Origin dashboard11.
+If you connect this GitHub repo to the existing `daymeter` Vercel project, leave the root at the repo (this `vercel.json` builds `dashboard/` and serves `/api/*`). Or set the Vercel root to `dashboard/`. Until GitHub is linked, production file-deploys load `dashboard/ship/api/*.js` (rebuild with `npm run bundle:api --prefix dashboard`) from this repo so ingest does not depend on a one-shot seed. Collector POSTs write Runtime Cache on Vercel; add a Blob store if you want the live log to survive cache eviction. Until `/api/live` exists on the site, the page still pulls Writer from Origin dashboard11.
 
 The numbered Origin takes (`dashboard` … `dashboard11`, `writer-apk` … `writer-apk4`) are still up too. Writer on the phone currently sends its day-summary to the Origin strip (take 9), which is why that URL needs to stay live as well.
 
