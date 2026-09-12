@@ -22,9 +22,8 @@ export function PhoneBreakdown({
   onSelect,
   sampledMinutes = [],
 }: Props) {
-  const minutes = sampledMinutes.length
-    ? sampledMinutes.reduce((n, row) => n + row.minutes, 0)
-    : phone.hours * 60;
+  const sessionMin = sampledMinutes.reduce((n, row) => n + row.minutes, 0);
+  const minutes = Math.max(sessionMin, phone.hours * 60);
   const seconds = minutes * 60;
   const every =
     phone.switches && phone.switches > 0

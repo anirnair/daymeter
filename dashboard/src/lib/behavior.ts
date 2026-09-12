@@ -60,12 +60,13 @@ export function generateBehavior(
   const msiMin = deviceMinutes(computers, "msi");
   const same = coincidences(computers);
   const windowed = firstLast(computers);
-  const phoneRate = phoneLooks.length
-    ? jumpsPerHour(phoneLooks)
-    : phoneJumpsPerHour(phone);
+  const phoneRate = Math.max(
+    phoneLooks.length ? jumpsPerHour(phoneLooks) : 0,
+    phoneJumpsPerHour(phone),
+  );
   const msiRate = jumpsPerHour(msi);
   const macRate = jumpsPerHour(mac);
-  const classes = classMinutes(samples);
+  const classes = classMinutes(computers);
   const tools = appMinutes(samples);
 
   if (sliced && !samples.length && !phone) return [];

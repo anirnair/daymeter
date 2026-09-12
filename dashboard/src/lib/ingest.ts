@@ -340,13 +340,26 @@ export function phonesFromSamples(samples: RawSample[], existing: Record<string,
     const top = [...appSeconds.entries()]
       .sort((a, b) => b[1] - a[1])
       .map(([app]) => app);
-    phones[day] = {
+    const derived: PhoneReport = {
       day,
       hours: seconds / 3600,
       top,
       switches,
       sampled: true,
     };
+    const prev = phones[day];
+    if (prev && !prev.sampled) {
+      derived.hours = Math.max(derived.hours, prev.hours);
+      derived.switches = Math.max(derived.switches ?? 0, prev.switches ?? 0);
+      const seen = new Set(derived.top);
+      for (const app of prev.top) {
+        if (!seen.has(app)) {
+          derived.top.push(app);
+          seen.add(app);
+        }
+      }
+    }
+    phones[day] = derived;
   }
   return phones;
 }

@@ -109,9 +109,11 @@ export default function App() {
   const computerMin = computerView.reduce((n, s) => n + s.minutes, 0);
   const dayMacMin = deviceMinutes(daySamples, "mac");
   const dayMsiMin = deviceMinutes(daySamples, "msi");
-  const dayPhoneSampleMin = deviceMinutes(daySamples, "phone");
-  const dayPhoneMin = dayPhoneSampleMin > 0 ? dayPhoneSampleMin : phoneMinutes(dayPhone);
-  const phoneMinSlice = phoneLooks.length ? phoneLooks.reduce((n, s) => n + s.minutes, 0) : phoneMinutes(phone);
+  const dayPhoneMin = Math.max(deviceMinutes(daySamples, "phone"), phoneMinutes(dayPhone));
+  const phoneMinSlice = Math.max(
+    phoneLooks.reduce((n, s) => n + s.minutes, 0),
+    phoneMinutes(phone),
+  );
   const total = computerMin + phoneMinSlice;
 
   const macMinSlice = viewSamples.filter((s) => s.key === "mac").reduce((n, s) => n + s.minutes, 0);
@@ -358,7 +360,7 @@ export default function App() {
           <span className="foot-sep"> · </span>
           {data.freshness.source === "live" ? "live store + seed" : "seed copy"}
           <span className="foot-sep"> · </span>
-          hard marks are real samples · phone summaries stay off the hour grid until sessions have clocks
+          hard marks are real samples · phone summaries stay off the hour grid · timed sessions sit on it
         </div>
       ) : null}
     </div>

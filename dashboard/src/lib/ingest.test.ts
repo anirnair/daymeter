@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { applyIngest, emptyLive, parseIngestBody } from "./ingest";
+import { applyIngest, emptyLive, parseIngestBody, phonesFromSamples } from "./ingest";
 import { applySampleSlice, EMPTY_SLICE } from "./filters";
 import { generateBehavior } from "./behavior";
 import { classifyApp } from "./classify";
@@ -123,5 +123,34 @@ describe("second-order behavior", () => {
     expect(notes.some((n) => n.kind === "waste")).toBe(true);
     expect(notes.some((n) => n.kind === "recovery")).toBe(true);
     expect(notes.some((n) => n.kind === "improve")).toBe(true);
+  });
+});
+
+describe("phone report merge", () => {
+  it("keeps a Writer summary when sessions cover less of the day", () => {
+    const live = applyIngest(
+      emptyLive(),
+      parseIngestBody(
+        JSON.stringify({
+          device: "phone",
+          sessions: [{ ts: "2026-09-12T00:10:02+0530", app: "com.whatsapp", seconds: 40 }],
+        }),
+      ),
+      "2026-09-12T00:12:00+0530",
+    );
+    const phones = phonesFromSamples(live.samples, {
+      "2026-09-12": {
+        day: "2026-09-12",
+        hours: 0.28,
+        top: ["com.android.launcher", "com.whatsapp"],
+        switches: 126,
+        sampled: false,
+      },
+    });
+    expect(phones["2026-09-12"]?.sampled).toBe(true);
+    expect(phones["2026-09-12"]?.hours).toBe(0.28);
+    expect(phones["2026-09-12"]?.switches).toBe(126);
+    expect(phones["2026-09-12"]?.top[0]).toBe("com.whatsapp");
+    expect(phones["2026-09-12"]?.top).toContain("com.android.launcher");
   });
 });
