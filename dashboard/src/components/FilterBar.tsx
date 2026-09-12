@@ -12,6 +12,7 @@ type Props = {
   slice: Slice;
   onChange: (next: Partial<Slice>) => void;
   onClear: () => void;
+  canOverlap: boolean;
 };
 
 function Chip({
@@ -26,7 +27,7 @@ function Chip({
   tone?: string;
 }) {
   return (
-    <button type="button" className={clsx("chip", tone)} aria-pressed={pressed} onClick={onClick}>
+    <button type="button" className={clsx("chip", tone)} aria-label={label} aria-pressed={pressed} onClick={onClick}>
       {label}
     </button>
   );
@@ -52,7 +53,7 @@ function bandHas(samples: Sample[], band: Exclude<Band, "all">): boolean {
   return samples.some((s) => bandOf(s.h) === band);
 }
 
-export function FilterBar({ samples, phoneApps, slice, onChange, onClear }: Props) {
+export function FilterBar({ samples, phoneApps, slice, onChange, onClear, canOverlap }: Props) {
   const hours = occupiedHours(samples);
   const apps = [...new Set([...samples.map((s) => s.app), ...phoneApps])].filter(Boolean);
   const classes = visibleClasses(samples, phoneApps);
@@ -107,16 +108,20 @@ export function FilterBar({ samples, phoneApps, slice, onChange, onClear }: Prop
           />
         ))}
       </Row>
+      {(canOverlap || sliceActive(slice)) ? (
       <Row kicker="cut">
-        <Chip
-          label="both awake"
-          pressed={slice.overlap}
-          onClick={() => onChange({ overlap: !slice.overlap })}
-        />
+        {canOverlap ? (
+          <Chip
+            label="both awake"
+            pressed={slice.overlap}
+            onClick={() => onChange({ overlap: !slice.overlap })}
+          />
+        ) : null}
         {sliceActive(slice) ? (
           <Chip label="clear" pressed={false} onClick={onClear} tone="hot" />
         ) : null}
       </Row>
+      ) : null}
     </div>
   );
 }

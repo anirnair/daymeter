@@ -34,16 +34,16 @@ export function Inspector({ sample, all, onSlice, onClose }: Props) {
         . Tabs / URLs not collected.
       </div>
       <div className="rail-chips">
-        <button type="button" className="chip" onClick={() => onSlice({ hour: Math.floor(sample.h), band: "all" })}>
+        <button type="button" className="chip" aria-label="this hour" onClick={() => onSlice({ hour: Math.floor(sample.h), band: "all" })}>
           this hour
         </button>
-        <button type="button" className="chip" onClick={() => onSlice({ app: sample.app })}>
+        <button type="button" className="chip" aria-label="this app" onClick={() => onSlice({ app: sample.app })}>
           this app
         </button>
-        <button type="button" className="chip" onClick={() => onSlice({ device: sample.key })}>
+        <button type="button" className="chip" aria-label="this device" onClick={() => onSlice({ device: sample.key })}>
           this device
         </button>
-        <button type="button" className="chip" onClick={() => onSlice({ cls: sample.cls })}>
+        <button type="button" className="chip" aria-label={CLASS_LABEL[sample.cls]} onClick={() => onSlice({ cls: sample.cls })}>
           {CLASS_LABEL[sample.cls]}
         </button>
       </div>

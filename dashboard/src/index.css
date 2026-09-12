@@ -486,15 +486,15 @@ number-flow-react {
   gap: 1px;
 }
 
-.matrix-cells.ticks span {
+.matrix-cells.matrix-hours span {
   color: var(--dim);
   font-size: var(--fs);
   min-height: 11px;
-  overflow: hidden;
+  overflow: visible;
 }
 
 .cell {
-  height: 11px;
+  height: 22px;
   background: var(--mute);
   min-width: 0;
 }
@@ -718,9 +718,8 @@ number-flow-react {
   .rail-row { grid-template-columns: 1fr; gap: 0; }
   .log-row,
   .log-row:has(.d) {
-    grid-template-columns: 66px 36px minmax(0, 1fr) auto;
+    grid-template-columns: 66px 36px 50px minmax(0, 1fr) auto;
   }
-  .log-row .cls,
   .log-row .d { display: none; }
   .shell { gap: 22px; }
 }

@@ -94,7 +94,7 @@ export default function App() {
   dayOrderRef.current = dayOrder;
 
   function patchSlice(next: Partial<Slice>) {
-    setAnimateHero(true);
+    setAnimateHero(false);
     setSlice((cur) => ({ ...cur, ...next }));
   }
 
@@ -117,7 +117,7 @@ export default function App() {
   }
 
   function selectDevice(key: DeviceKey | "all") {
-    setAnimateHero(true);
+    setAnimateHero(false);
     setSlice((cur) => ({ ...cur, device: key }));
   }
 
@@ -159,8 +159,9 @@ export default function App() {
   const selected = daySamples.find((s) => s.id === selectedId) ?? viewSamples.find((s) => s.id === selectedId) ?? null;
   const showPhoneSection = Boolean(phone);
   const showStrip = daySamples.some((s) => s.key === "mac" || s.key === "msi") && slice.device !== "phone";
-  const showMatrix = showStrip;
-  const showLog = slice.device !== "phone";
+  const matrixSamples = applySampleSlice(daySamples, { ...slice, hour: null, band: "all" });
+  const showMatrix = showStrip && matrixSamples.length > 0;
+  const showLog = daySamples.length > 0 && slice.device !== "phone";
   const sliced = sliceActive(slice);
 
   return (
@@ -235,6 +236,7 @@ export default function App() {
         slice={slice}
         onChange={patchSlice}
         onClear={clearSlice}
+        canOverlap={both.size > 0}
       />
 
       {selected ? (
@@ -265,7 +267,7 @@ export default function App() {
 
       {showMatrix ? (
         <HourMatrix
-          samples={applySampleSlice(daySamples, { ...slice, hour: null, band: "all" })}
+          samples={matrixSamples}
           hour={slice.hour}
           onHour={(hour) => patchSlice({ hour, band: "all" })}
         />

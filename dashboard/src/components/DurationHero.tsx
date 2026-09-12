@@ -12,7 +12,7 @@ export function DurationHero({ minutes, label, animated = true }: Props) {
   return (
     <div className="hero">
       <NumberFlowGroup>
-        <div className="hero-num" aria-label={label}>
+        <div className="hero-num" aria-label={label} key={underHour ? "min" : "hm"}>
           {underHour ? (
             <>
               <NumberFlow value={mins} isolate animated={animated} />

@@ -27,7 +27,7 @@ export function HourMatrix({ samples, hour, onHour }: Props) {
       <div className="matrix">
         <div className="matrix-ticks">
           <span className="lab" />
-          <div className="matrix-cells ticks">
+          <div className="matrix-cells matrix-hours">
             {HOURS.map((h) => (
               <span key={h} className={clsx(h % 6 === 0 && "on")}>
                 {h % 6 === 0 ? prettyHourChip(h).replace("m", "") : ""}
