@@ -156,6 +156,10 @@ button:disabled {
   flex-direction: column;
   align-items: center;
   gap: 6px;
+  width: 100%;
+  max-width: 100%;
+  overflow: hidden;
+  isolation: isolate;
 }
 
 .hero-num {
@@ -168,11 +172,15 @@ button:disabled {
   justify-content: center;
   gap: 11px;
   font-family: var(--font);
+  max-width: 100%;
+  overflow: hidden;
+  isolation: isolate;
 }
 
 number-flow-react {
   font-family: inherit;
   font-variant-numeric: tabular-nums;
+  overflow: hidden;
 }
 
 .hero-unit {
@@ -406,7 +414,7 @@ number-flow-react {
 
 .chip + .chip::before {
   content: "·";
-  color: var(--mute);
+  color: var(--dim);
   margin-right: 11px;
 }
 
@@ -442,6 +450,10 @@ number-flow-react {
 
 .insight:last-child {
   border-bottom: 1px solid var(--line);
+}
+
+.behavior-group .insight:last-child {
+  border-bottom: none;
 }
 
 .insight:disabled {
@@ -587,6 +599,19 @@ number-flow-react {
   color: var(--dim);
   text-align: center;
   max-width: 100%;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  column-gap: 0;
+  row-gap: 0;
+}
+
+.fresh-item {
+  white-space: nowrap;
+}
+
+.fresh-item + .fresh-item::before {
+  content: " · ";
 }
 
 .fresh-src.on { color: var(--msi); }
@@ -606,10 +631,6 @@ number-flow-react {
   color: var(--dim);
 }
 
-.behavior-group h3.waste { color: var(--hot); }
-.behavior-group h3.recovery { color: var(--phone); }
-.behavior-group h3.improve { color: var(--msi); }
-
 .insight .evidence {
   color: var(--dim);
   margin-top: 4px;
@@ -619,14 +640,6 @@ number-flow-react {
 .matrix-row .lab.phone { color: var(--phone); }
 .matrix-row .lab.mac { color: var(--mac); }
 .matrix-row .lab.msi { color: var(--msi); }
-
-.phone-app {
-  grid-template-columns: minmax(0, 1fr) auto;
-}
-
-.phone-app:has(.bar-track) {
-  grid-template-columns: minmax(72px, 28%) minmax(0, 1fr) auto;
-}
 
 .tool-row,
 .phone-app {
@@ -645,6 +658,10 @@ number-flow-react {
 
 .phone-app {
   grid-template-columns: minmax(0, 1fr) auto;
+}
+
+.phone-app:has(.bar-track) {
+  grid-template-columns: minmax(72px, 28%) minmax(0, 1fr) auto;
 }
 
 .tool-row::before,
@@ -754,8 +771,35 @@ number-flow-react {
 @media (max-width: 640px) {
   body { padding: 22px 11px 33px; }
   .devices { grid-template-columns: 1fr; }
-  .dev-card { min-height: 76px; flex-direction: row; justify-content: space-between; text-align: left; padding: 12px 14px; }
-  .dev-card .time { margin-top: 0; }
+  .dev-card {
+    display: grid;
+    grid-template-columns: minmax(52px, auto) minmax(0, 1fr);
+    grid-template-rows: auto auto;
+    column-gap: 12px;
+    row-gap: 0;
+    align-items: baseline;
+    text-align: left;
+    min-height: 76px;
+    padding: 12px 14px;
+  }
+  .dev-card .kicker {
+    grid-row: 1 / span 2;
+    align-self: center;
+  }
+  .dev-card .time {
+    margin-top: 0;
+    justify-self: end;
+    text-align: right;
+  }
+  .dev-card .meta {
+    justify-self: end;
+    text-align: right;
+    min-width: 0;
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
   .lane { grid-template-columns: 44px minmax(0, 1fr); }
   .ticks { padding-left: 44px; }
   .tool-row { grid-template-columns: minmax(72px, 28%) minmax(0, 1fr) auto; }

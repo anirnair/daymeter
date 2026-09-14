@@ -45,14 +45,14 @@ export function PhoneBreakdown({
 
   return (
     <>
-      <div className="empty" style={{ textAlign: "center" }}>
+      <div className="empty">
         {prettyDuration(minutes)}
         {phone.switches != null ? ` · ${phone.switches} jumps` : ""}
         {every != null ? ` · about every ${every} seconds` : ""}
         {sampled ? " · timed sessions" : " · day-summary"}
       </div>
       {rows.length > 0 ? (
-        <div className="section" style={{ gap: 8 }}>
+        <div className="section">
           <h2>jumps per hour</h2>
           {rows.map((row) => (
             <FloatCard
@@ -81,7 +81,7 @@ export function PhoneBreakdown({
           ))}
         </div>
       ) : null}
-      <div className="section" style={{ gap: 8 }}>
+      <div className="section">
         <h2>{sampled ? "apps on phone" : "apps in the mix"}</h2>
         {appRows.map((row) => (
           <FloatCard

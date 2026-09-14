@@ -1,4 +1,4 @@
-import { dayKey, prettyDate, prettyTime } from "./format";
+import { dayKey, prettyDateShort, prettyTime } from "./format";
 import type { DeviceKey, Freshness } from "./types";
 
 export function emptyFreshness(lastUpdated: string | null = null): Freshness {
@@ -26,17 +26,28 @@ export function prettyLag(iso: string | null, now = Date.now()): string {
   if (lag < 36 * 3600) return `${Math.round(lag / 3600)}h ago`;
   const day = dayKey(iso || "");
   const time = prettyTime(iso || "");
-  if (day && time) return `${prettyDate(day)}, ${time}`;
+  if (day && time) return `${prettyDateShort(day, now)}, ${time}`;
   return iso || "";
 }
 
-export function deviceLagLine(devices: Freshness["devices"], now = Date.now()): string {
-  const parts: string[] = [];
+export type DeviceLagPart = { key: DeviceKey; label: string; lag: string };
+
+export function deviceLagParts(
+  devices: Freshness["devices"],
+  now = Date.now(),
+): DeviceLagPart[] {
+  const parts: DeviceLagPart[] = [];
   (["mac", "msi", "phone"] as DeviceKey[]).forEach((key) => {
     const ts = devices[key];
     if (!ts) return;
     const label = key === "mac" ? "Mac" : key === "msi" ? "MSI" : "Phone";
-    parts.push(`${label} ${prettyLag(ts, now)}`);
+    parts.push({ key, label, lag: prettyLag(ts, now) });
   });
-  return parts.join(" · ");
+  return parts;
+}
+
+export function deviceLagLine(devices: Freshness["devices"], now = Date.now()): string {
+  return deviceLagParts(devices, now)
+    .map((part) => `${part.label} ${part.lag}`)
+    .join(" · ");
 }
