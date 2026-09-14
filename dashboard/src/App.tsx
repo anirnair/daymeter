@@ -141,7 +141,7 @@ export default function App() {
   const clock = useMemo(() => clockHours(viewSamples), [viewSamples]);
   const overlap = useMemo(() => overlapStats(viewSamples), [viewSamples]);
   const intents = useMemo(() => intentMinutes(viewSamples, phone), [viewSamples, phone]);
-  const landingRows = useMemo(() => landings(viewSamples), [viewSamples]);
+  const landingRows = useMemo(() => landings(viewSamples, phone), [viewSamples, phone]);
   const unclocked = unclockedPhoneMinutes(daySamples, dayPhone);
 
   const phoneLooks = viewSamples.filter((s) => s.key === "phone");
@@ -342,12 +342,13 @@ export default function App() {
             hour={slice.hour}
             onHour={(hour) => patchSlice({ hour, band: "all" })}
             unclockedPhone={unclocked}
+            dayMinutes={{ mac: macMinSlice, msi: msiMinSlice, phone: phoneMinSlice }}
             label="concentric 24 hour rings for Mac, MSI, and Phone"
           />
           <div className="empty">
-            outer Mac · middle MSI · inner Phone · 12 at the top · tap an hour to slice
+            outer Mac · middle MSI · inner Phone · closed rings are share of 24h · wedges are clocked hours
             {unclocked > 0
-              ? ` · ${prettyDuration(unclocked)} phone time is reported but has no session clocks yet`
+              ? ` · ${prettyDuration(unclocked)} phone time is reported without session clocks, so it fills the inner ring instead of hour wedges`
               : ""}
           </div>
         </section>
@@ -364,6 +365,7 @@ export default function App() {
       <ClockStrip
         days={data.days}
         samples={data.samples}
+        phones={data.phones}
         selected={day}
         hour={slice.hour}
         onDay={(next) => {
@@ -454,7 +456,7 @@ export default function App() {
               ? "Origin pull + seed"
               : "seed copy"}
           <span className="foot-sep"> · </span>
-          refresh ~90s while this tab is open · phone needs timed sessions to sit on the inner ring
+          refresh ~90s while this tab is open · Writer day totals fill the inner ring until timed sessions exist
         </div>
       ) : null}
     </div>

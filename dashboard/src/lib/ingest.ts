@@ -221,16 +221,22 @@ function parseTsv(text: string): ParsedIngest {
     const trimmed = line.trim();
     if (!trimmed || trimmed.startsWith("#")) continue;
     const parts = trimmed.split("\t");
-    if (parts.length >= 3 && looksLikeTs(parts[0]) && !parts[1]?.includes("=")) {
-      const sample = rawFromUnknown({ ts: parts[0], device: parts[1], app: parts.slice(2).join("\t") });
-      if (sample) samples.push(sample);
-      continue;
-    }
     const fields: Record<string, string> = {};
     if (looksLikeTs(parts[0])) fields.ts = parts[0];
     for (const p of parts) {
       const eq = p.indexOf("=");
       if (eq > 0) fields[p.slice(0, eq)] = p.slice(eq + 1);
+    }
+    const writerLine = parts[1] === "reported" || Boolean(fields.hours);
+    if (writerLine && fields.hours) {
+      const phone = phoneFromUnknown(fields, dayKey(fields.ts || "") || undefined);
+      if (phone) phones.push(phone);
+      continue;
+    }
+    if (parts.length >= 3 && looksLikeTs(parts[0]) && !parts[1]?.includes("=")) {
+      const sample = rawFromUnknown({ ts: parts[0], device: parts[1], app: parts.slice(2).join("\t") });
+      if (sample) samples.push(sample);
+      continue;
     }
     if (fields.hours) {
       const phone = phoneFromUnknown(fields, dayKey(fields.ts || "") || undefined);

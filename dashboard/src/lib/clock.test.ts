@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { classifyApp } from "./classify";
-import { clockHours, intentMinutes, landings, overlapStats } from "./clock";
+import { clockHours, dayShare, intentMinutes, landings, overlapStats } from "./clock";
 import { classifyIntent } from "./intent";
 import { estimateSampleMinutes } from "./metrics";
 import { applySampleSlice, EMPTY_SLICE } from "./filters";
@@ -68,6 +68,19 @@ describe("clock", () => {
   it("make filter keeps grok and chrome", () => {
     const out = applySampleSlice(samples(), { ...EMPTY_SLICE, intent: "make" });
     expect(out.length).toBe(6);
+  });
+
+  it("names Writer apps as mix landings using leftover reported minutes", () => {
+    const rows = landings(samples(), {
+      day: "2026-09-12",
+      hours: 6.53,
+      top: ["com.instagram.android", "com.whatsapp"],
+      switches: 1082,
+    });
+    const ig = rows.find((row) => row.app === "com.instagram.android");
+    expect(ig?.minutes).toBeGreaterThan(100);
+    expect(ig?.devices).toContain("phone");
+    expect(dayShare(6.53 * 60)).toBeCloseTo(6.53 / 24);
   });
 
   it("splits leftover phone hours across named apps", () => {

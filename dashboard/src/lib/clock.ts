@@ -163,7 +163,7 @@ export function intentMinutes(samples: Sample[], phone: PhoneReport | null = nul
     .filter((row) => row.minutes > 0);
 }
 
-export function landings(samples: Sample[]): Landing[] {
+export function landings(samples: Sample[], phone: PhoneReport | null = null): Landing[] {
   const map = new Map<string, Landing>();
   const last = new Map<DeviceKey, string>();
   const sorted = [...samples].sort((a, b) => a.ms - b.ms);
@@ -183,7 +183,28 @@ export function landings(samples: Sample[]): Landing[] {
     if (!cur.devices.includes(s.key)) cur.devices.push(s.key);
     map.set(s.app, cur);
   }
+  const extra = unclockedPhoneMinutes(samples, phone);
+  if (phone?.top.length) {
+    const each = extra > 0 ? extra / phone.top.length : 0;
+    for (const app of phone.top) {
+      const cur = map.get(app) ?? {
+        app,
+        landings: 0,
+        minutes: 0,
+        devices: ["phone"] as DeviceKey[],
+        intent: classifyIntent(app),
+      };
+      cur.minutes += each;
+      if (!cur.devices.includes("phone")) cur.devices.push("phone");
+      map.set(app, cur);
+    }
+  }
   return [...map.values()].sort((a, b) => b.landings - a.landings || b.minutes - a.minutes);
+}
+
+export function dayShare(minutes: number): number {
+  if (!(minutes > 0)) return 0;
+  return Math.min(1, minutes / (24 * 60));
 }
 
 export function unclockedPhoneMinutes(samples: Sample[], phone: PhoneReport | null): number {

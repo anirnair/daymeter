@@ -806,6 +806,16 @@ number-flow-react {
   font-family: var(--font);
 }
 
+.clock-fill {
+  fill: none;
+  stroke-width: 3.2;
+  stroke-linecap: butt;
+  transform-origin: 120px 120px;
+}
+.clock-fill.mac { stroke: var(--mac); }
+.clock-fill.msi { stroke: var(--msi); }
+.clock-fill.phone { stroke: var(--phone); }
+
 .clock-seg.mac { fill: var(--mac); }
 .clock-seg.msi { fill: var(--msi); }
 .clock-seg.phone { fill: var(--phone); }

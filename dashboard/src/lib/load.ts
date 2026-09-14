@@ -2,7 +2,7 @@ import { classifyApp } from "./classify";
 import { deviceKey, dayKey, parseIso, hourFrac } from "./format";
 import { emptyFreshness } from "./freshness";
 import { estimateSampleMinutes, parsePhoneLine } from "./metrics";
-import { mergeMeta, normalizePhone } from "./ingest";
+import { mergeMeta, mergePhoneReports, normalizePhone } from "./ingest";
 import { readOrigin } from "./origin";
 import type { DaymeterData, Freshness, Meta, PhoneReport, RawSample, Sample } from "./types";
 
@@ -107,14 +107,14 @@ async function readClientSeedMeta(): Promise<Meta> {
     }
   }
 
-  const phones = { ...(meta.phones ?? {}) };
+  const phones = { ...(meta.phones ?? {}) } as Record<string, PhoneReport>;
   try {
     const pr = await fetch("./phone-reported.tsv", { cache: "no-store" });
     if (pr.ok) {
       const text = await pr.text();
       for (const line of text.trim().split(/\n+/)) {
         const parsed = parsePhoneLine(line);
-        if (parsed) phones[parsed.day] = parsed;
+        if (parsed) phones[parsed.day] = mergePhoneReports(phones[parsed.day], parsed);
       }
     }
   } catch {

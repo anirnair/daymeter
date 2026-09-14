@@ -75,6 +75,21 @@ time="2026-09-12 00:10:42" type=MOVE_TO_BACKGROUND package=com.whatsapp
     expect(fromJson.samples[0]?.app).toBe("com.whatsapp");
   });
 
+  it("reads Writer reported lines as phone totals, not fake device samples", () => {
+    const parsed = parseIngestBody(
+      [
+        "2026-09-12T00:22:51+05:30\treported\thours=0.28\ttop=com.android.launcher,com.whatsapp\tswitches=126",
+        "2026-09-12T00:22:51+05:30\treported\thours=6.53\ttop=com.instagram.android,com.twitter.android,com.whatsapp,ai.x.grok.bot,com.android.launcher\tswitches=1082",
+        "2026-09-14T00:32:48+05:30\treported\thours=4.29\ttop=com.instagram.android,mark.via.gp,com.google.android.apps.youtube.music\tswitches=463",
+      ].join("\n"),
+      "text/tab-separated-values",
+    );
+    expect(parsed.samples).toHaveLength(0);
+    expect(parsed.phones.map((p) => p.day).sort()).toEqual(["2026-09-12", "2026-09-12", "2026-09-14"]);
+    expect(parsed.phones[1]?.hours).toBe(6.53);
+    expect(parsed.phones[1]?.top).toContain("ai.x.grok.bot");
+  });
+
   it("reads TSV looks", () => {
     const parsed = parseIngestBody("2026-09-11T21:18:02+0530\tmac\tGrok Bot\n");
     expect(parsed.samples[0]?.app).toBe("Grok Bot");

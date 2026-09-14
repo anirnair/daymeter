@@ -3,13 +3,14 @@ import { generateBehavior } from "./behavior";
 import { applyIngest, mergeMeta, parseIngestBody } from "./ingest";
 import { hydrateMeta } from "./load";
 import { readOrigin } from "./origin";
+import { newerStamp, readWriterPhone, readWriterPhoneTsv, writerPhoneSecret } from "./writer-origin";
 import { liveBackend, liveWritable, readLive, readSeed, writeLive } from "./store";
 import type { DaymeterData, PhoneReport } from "./types";
 
 export const CORS = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
-  "Access-Control-Allow-Headers": "Content-Type, x-daymeter-token, Authorization",
+  "Access-Control-Allow-Headers": "Content-Type, x-daymeter-token, x-daymeter-secret, Authorization",
   "Cache-Control": "no-store",
 } as const;
 
@@ -32,18 +33,20 @@ export function ingestHello(): Response {
 
 export function ingestAuthorized(url: string, headers: Headers): boolean {
   const needed = process.env.DAYMETER_INGEST_TOKEN;
+  const header =
+    headers.get("x-daymeter-token") ||
+    headers.get("x-daymeter-secret") ||
+    headers.get("authorization")?.replace(/^Bearer\s+/i, "") ||
+    "";
+  const query = new URL(url, "http://localhost").searchParams.get("k") || "";
+  const writer = writerPhoneSecret();
   if (!needed) {
     if (process.env.VERCEL_ENV === "production") {
       console.error("DAYMETER_INGEST_TOKEN is not set; /api/ingest is open");
     }
     return true;
   }
-  const header =
-    headers.get("x-daymeter-token") ||
-    headers.get("authorization")?.replace(/^Bearer\s+/i, "") ||
-    "";
-  const query = new URL(url, "http://localhost").searchParams.get("k") || "";
-  return header === needed || query === needed;
+  return header === needed || query === needed || header === writer || query === writer;
 }
 
 function nowIso(): string {
@@ -62,21 +65,24 @@ export function latestPhone(phones: Record<string, PhoneReport>): PhoneReport | 
 export async function buildLiveData(): Promise<DaymeterData> {
   const seed = await readSeed();
   const origin = await readOrigin();
+  const writer = await readWriterPhone();
   const live = await readLive();
-  const meta = mergeMeta(mergeMeta(seed, origin), live);
+  const meta = mergeMeta(mergeMeta(mergeMeta(seed, origin), writer), live);
   const hasLive = Boolean(live.lastIngest || live.samples.length);
+  const hasWriter = Boolean(writer && Object.keys(writer.phones).length);
   const hasOrigin = Boolean(
-    origin && (origin.lastUpdated || origin.samples.length || Object.keys(origin.phones).length),
+    (origin && (origin.lastUpdated || origin.samples.length || Object.keys(origin.phones).length)) ||
+      hasWriter,
   );
   const data = hydrateMeta(meta, {
     freshness: {
       source: hasLive ? "live" : hasOrigin ? "origin" : "seed",
-      lastIngest: live.lastIngest,
-      lastUpdated: meta.lastUpdated ?? live.lastUpdated ?? origin?.lastUpdated ?? null,
+      lastIngest: live.lastIngest ?? writer?.lastIngest ?? null,
+      lastUpdated: meta.lastUpdated ?? live.lastUpdated ?? writer?.lastUpdated ?? origin?.lastUpdated ?? null,
       devices: {
         mac: live.devices.mac ?? origin?.devices.mac ?? null,
         msi: live.devices.msi ?? origin?.devices.msi ?? null,
-        phone: live.devices.phone ?? origin?.devices.phone ?? null,
+        phone: newerStamp(live.devices.phone, newerStamp(writer?.devices.phone, origin?.devices.phone)),
       },
       writable: liveWritable(),
     },
@@ -101,6 +107,26 @@ export async function buildLiveData(): Promise<DaymeterData> {
 export async function handleLiveGet(): Promise<Response> {
   const data = await buildLiveData();
   return json(data);
+}
+
+export async function handlePhoneIngest(
+  url: string,
+  headers: Headers,
+  body: string,
+  method: string,
+): Promise<Response> {
+  if (method === "GET") {
+    if (!ingestAuthorized(url, headers)) {
+      return json({ ok: false, error: "unauthorized" }, 401);
+    }
+    const tsv = await readWriterPhoneTsv();
+    return new Response(tsv || "", {
+      status: 200,
+      headers: { "Content-Type": "text/tab-separated-values; charset=utf-8", ...CORS },
+    });
+  }
+  if (method === "POST") return handleIngestPost(url, headers, body);
+  return json({ ok: false, error: "method" }, 405);
 }
 
 export async function handleIngestPost(url: string, headers: Headers, body: string): Promise<Response> {
@@ -130,7 +156,7 @@ export async function handleIngestPost(url: string, headers: Headers, body: stri
   }
   const stamp = nowIso();
   const next = applyIngest(await readLive(), parsed, stamp);
-  const merged = hydrateMeta(mergeMeta(mergeMeta(await readSeed(), await readOrigin()), next));
+  const merged = hydrateMeta(mergeMeta(mergeMeta(mergeMeta(await readSeed(), await readOrigin()), await readWriterPhone()), next));
   next.notes = generateBehavior(merged.samples, latestPhone(merged.phones), {
     device: "all",
     app: null,

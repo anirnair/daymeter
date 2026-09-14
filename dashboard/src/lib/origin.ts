@@ -57,6 +57,7 @@ function parseForegroundTsv(text: string): RawSample[] {
     if (parts.length < 3) continue;
     const ts = coerceTs(parts[0]);
     if (!ts) continue;
+    if (parts[1] === "reported" || parts.some((part) => part.startsWith("hours="))) continue;
     const sample: RawSample = {
       ts,
       device: parts[1] || "unknown",

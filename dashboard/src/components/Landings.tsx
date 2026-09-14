@@ -12,7 +12,7 @@ type Props = {
 
 export function Landings({ rows, selected, onSelect }: Props) {
   if (!rows.length) return null;
-  const max = Math.max(...rows.map((row) => row.landings), 1);
+  const max = Math.max(...rows.map((row) => row.landings || row.minutes), 1);
   return (
     <section className="section">
       <h2>landings</h2>
@@ -29,11 +29,12 @@ export function Landings({ rows, selected, onSelect }: Props) {
           <span className="bar-track">
             <span
               className={clsx("bar-fill", row.devices[0])}
-              style={{ width: `${Math.max(4, (row.landings / max) * 100)}%` }}
+              style={{ width: `${Math.max(4, ((row.landings || row.minutes) / max) * 100)}%` }}
             />
           </span>
           <span className="bar-n">
-            {row.landings}× · {prettyDuration(row.minutes)}
+            {row.landings > 0 ? `${row.landings}× · ` : "in mix · "}
+            {prettyDuration(row.minutes)}
           </span>
         </button>
       ))}

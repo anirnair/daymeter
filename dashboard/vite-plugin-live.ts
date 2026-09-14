@@ -1,6 +1,6 @@
 import type { IncomingMessage, ServerResponse } from "node:http";
 import type { Plugin } from "vite";
-import { CORS, handleAgent, handleIngestPost, handleLiveGet, ingestHello, readIncoming, writeNodeResponse } from "./src/lib/server";
+import { CORS, handleAgent, handleIngestPost, handleLiveGet, handlePhoneIngest, ingestHello, readIncoming, writeNodeResponse } from "./src/lib/server";
 
 async function apiMiddleware(req: IncomingMessage, res: ServerResponse, next: () => void) {
   const path = req.url?.split("?")[0] || "";
@@ -15,7 +15,9 @@ async function apiMiddleware(req: IncomingMessage, res: ServerResponse, next: ()
     const incoming = await readIncoming(req);
     let response: Response;
     if (path === "/api/live" && incoming.method === "GET") response = await handleLiveGet();
-    else if (path === "/api/ingest" && incoming.method === "GET") {
+    else if (path === "/api/ingest/phone") {
+      response = await handlePhoneIngest(incoming.url, incoming.headers, incoming.body, incoming.method);
+    } else if (path === "/api/ingest" && incoming.method === "GET") {
       response = ingestHello();
     } else if (path === "/api/ingest" && incoming.method === "POST") {
       response = await handleIngestPost(incoming.url, incoming.headers, incoming.body);

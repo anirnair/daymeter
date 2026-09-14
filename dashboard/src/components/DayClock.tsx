@@ -1,6 +1,6 @@
 import clsx from "clsx";
+import { dayShare, type ClockHour } from "../lib/clock";
 import { DEVICE_LABEL, prettyDuration, prettyHourChip } from "../lib/format";
-import type { ClockHour } from "../lib/clock";
 import type { DeviceKey } from "../lib/types";
 
 type Props = {
@@ -10,6 +10,7 @@ type Props = {
   size?: number;
   label?: string;
   unclockedPhone?: number;
+  dayMinutes?: { mac: number; msi: number; phone: number };
   compact?: boolean;
 };
 
@@ -49,27 +50,42 @@ export function DayClock({
   size = 264,
   label,
   unclockedPhone = 0,
+  dayMinutes,
   compact = false,
 }: Props) {
   const cx = 120;
   const cy = 120;
-  const occupied = hours.some((row) => row.minutes > 0);
+  const fills = [
+    { key: "mac" as const, r: 109, minutes: dayMinutes?.mac ?? hours.reduce((n, row) => n + row.mac, 0) },
+    { key: "msi" as const, r: 87, minutes: dayMinutes?.msi ?? hours.reduce((n, row) => n + row.msi, 0) },
+    {
+      key: "phone" as const,
+      r: 55,
+      minutes: dayMinutes?.phone ?? hours.reduce((n, row) => n + row.phone, 0) + unclockedPhone,
+    },
+  ];
+  const occupied = hours.some((row) => row.minutes > 0) || fills.some((ring) => ring.minutes > 0);
 
   return (
     <div className={clsx("clock", compact && "compact")}>
       <svg viewBox="0 0 240 240" width={size} height={size} role="img" aria-label={label || "24 hour device clock"}>
         <circle cx={cx} cy={cy} r={110} fill="none" stroke="rgba(255,255,255,0.06)" />
-        {unclockedPhone > 0 ? (
-          <circle
-            cx={cx}
-            cy={cy}
-            r={55}
-            fill="none"
-            stroke="var(--phone)"
-            strokeDasharray="2 4"
-            strokeOpacity="0.45"
-          />
-        ) : null}
+        {fills.map((ring) => {
+          const share = dayShare(ring.minutes);
+          const c = 2 * Math.PI * ring.r;
+          return (
+            <circle
+              key={`fill-${ring.key}`}
+              cx={cx}
+              cy={cy}
+              r={ring.r}
+              className={clsx("clock-fill", ring.key)}
+              strokeDasharray={`${Math.max(0.01, share * c)} ${c}`}
+              strokeDashoffset={c * 0.25}
+              opacity={share > 0 ? 0.95 : 0.18}
+            />
+          );
+        })}
         {[0, 6, 12, 18].map((tick) => {
           const p = polar(cx, cy, 116, -90 + tick * 15);
           return (
@@ -117,7 +133,7 @@ export function DayClock({
           {hour != null
             ? prettyDuration((hours[hour]?.minutes ?? 0))
             : compact
-              ? "day"
+              ? prettyDuration(fills[2].minutes || fills[0].minutes + fills[1].minutes)
               : "tap an hour"}
         </text>
       </svg>
