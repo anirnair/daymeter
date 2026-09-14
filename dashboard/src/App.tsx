@@ -11,8 +11,21 @@ import { HourMatrix } from "./components/HourMatrix";
 import { EventLog } from "./components/EventLog";
 import { Inspector } from "./components/Inspector";
 import { FreshnessBar } from "./components/Freshness";
+import { DayClock } from "./components/DayClock";
+import { ClockStrip } from "./components/ClockStrip";
+import { IntentMix } from "./components/IntentMix";
+import { Simultaneous } from "./components/Simultaneous";
+import { Landings } from "./components/Landings";
+import { HourStack } from "./components/HourStack";
 import { loadDaymeter } from "./lib/load";
 import { generateBehavior } from "./lib/behavior";
+import {
+  clockHours,
+  intentMinutes,
+  landings,
+  overlapStats,
+  unclockedPhoneMinutes,
+} from "./lib/clock";
 import {
   DEVICE_LABEL,
   prettyDate,
@@ -42,6 +55,27 @@ function phonesFor(data: DaymeterData, day: string | "all"): PhoneReport[] {
   return data.phones[day] ? [data.phones[day]] : [];
 }
 
+function combinePhones(phones: PhoneReport[]): PhoneReport | null {
+  if (!phones.length) return null;
+  if (phones.length === 1) return phones[0];
+  const top: string[] = [];
+  const seen = new Set<string>();
+  let switches = 0;
+  let hours = 0;
+  let sampled = false;
+  for (const phone of phones) {
+    hours += phone.hours;
+    if (phone.switches) switches += phone.switches;
+    if (phone.sampled) sampled = true;
+    for (const app of phone.top) {
+      if (seen.has(app)) continue;
+      seen.add(app);
+      top.push(app);
+    }
+  }
+  return { day: phones.map((p) => p.day).sort().join(","), hours, top, switches: switches || null, sampled };
+}
+
 function dateLabel(data: DaymeterData, day: string | "all"): string {
   if (day === "all") {
     if (!data.days.length) return "No days yet";
@@ -61,6 +95,7 @@ export default function App() {
   useEffect(() => {
     let stop = false;
     async function tick() {
+      if (typeof document !== "undefined" && document.visibilityState === "hidden") return;
       try {
         const loaded = await loadDaymeter();
         if (stop) return;
@@ -74,7 +109,7 @@ export default function App() {
       }
     }
     void tick();
-    const id = window.setInterval(tick, 60_000);
+    const id = window.setInterval(tick, 90_000);
     const onVis = () => {
       if (document.visibilityState === "visible") void tick();
     };
@@ -96,13 +131,18 @@ export default function App() {
   const daySamples = useMemo(() => (data ? samplesFor(data, day) : []), [data, day]);
   const dayPhone = useMemo(() => {
     if (!data) return null;
-    return phonesFor(data, day)[0] ?? null;
+    return combinePhones(phonesFor(data, day));
   }, [data, day]);
 
   const viewSamples = useMemo(() => applySampleSlice(daySamples, slice), [daySamples, slice]);
   const phone = useMemo(() => applyPhoneSlice(dayPhone, slice), [dayPhone, slice]);
   const both = useMemo(() => overlapHalfHours(daySamples), [daySamples]);
   const sameSecond = useMemo(() => coincidences(daySamples), [daySamples]);
+  const clock = useMemo(() => clockHours(viewSamples), [viewSamples]);
+  const overlap = useMemo(() => overlapStats(viewSamples), [viewSamples]);
+  const intents = useMemo(() => intentMinutes(viewSamples, phone), [viewSamples, phone]);
+  const landingRows = useMemo(() => landings(viewSamples), [viewSamples]);
+  const unclocked = unclockedPhoneMinutes(daySamples, dayPhone);
 
   const phoneLooks = viewSamples.filter((s) => s.key === "phone");
   const computerView = viewSamples.filter((s) => s.key !== "phone");
@@ -201,8 +241,10 @@ export default function App() {
 
   return (
     <div className="shell">
-      <div className="brand">daymeter</div>
-      <FreshnessBar freshness={data.freshness} />
+      <header className="top">
+        <div className="brand">daymeter</div>
+        <FreshnessBar freshness={data.freshness} />
+      </header>
 
       <div className="day-picker" aria-label="day">
         <button
@@ -233,7 +275,9 @@ export default function App() {
       />
       {sliced ? (
         <div className="hero-lab">in this slice · {viewSamples.length} look{viewSamples.length === 1 ? "" : "s"}{phone ? " + phone" : ""}</div>
-      ) : null}
+      ) : (
+        <div className="hero-lab">how the day actually sat</div>
+      )}
 
       <div className="share" aria-hidden="true">
         <i className="mac" style={{ width: `${(macMinSlice / shareTotal) * 100}%` }} />
@@ -278,7 +322,7 @@ export default function App() {
         slice={slice}
         onChange={patchSlice}
         onClear={clearSlice}
-        canOverlap={both.size > 0}
+        canOverlap={both.size > 0 || overlap.dual > 0}
       />
 
       {selected ? (
@@ -289,6 +333,64 @@ export default function App() {
           onClose={() => setSelectedId(null)}
         />
       ) : null}
+
+      <div className="dash">
+        <section className="section clock-panel">
+          <h2>24h clock</h2>
+          <DayClock
+            hours={clock}
+            hour={slice.hour}
+            onHour={(hour) => patchSlice({ hour, band: "all" })}
+            unclockedPhone={unclocked}
+            label="concentric 24 hour rings for Mac, MSI, and Phone"
+          />
+          <div className="empty">
+            outer Mac · middle MSI · inner Phone · 12 at the top · tap an hour to slice
+            {unclocked > 0
+              ? ` · ${prettyDuration(unclocked)} phone time is reported but has no session clocks yet`
+              : ""}
+          </div>
+        </section>
+        <div className="dash-side">
+          <Simultaneous stats={overlap} onSlice={patchSlice} />
+          <IntentMix
+            rows={intents}
+            selected={slice.intent}
+            onSelect={(intent) => patchSlice({ intent })}
+          />
+        </div>
+      </div>
+
+      <ClockStrip
+        days={data.days}
+        samples={data.samples}
+        selected={day}
+        hour={slice.hour}
+        onDay={(next) => {
+          setAnimateHero(false);
+          setDay(next);
+          clearSlice();
+        }}
+      />
+
+      <HourStack hours={clock} hour={slice.hour} onHour={(hour) => patchSlice({ hour, band: "all" })} />
+
+      <div className="dash">
+        {tools.length > 0 ? (
+          <section className="section">
+            <h2>tools</h2>
+            <ToolsChart
+              rows={tools}
+              selected={slice.app}
+              onSelect={(app) => patchSlice({ app })}
+              maxMinutes={tools[0]?.minutes ?? 1}
+            />
+          </section>
+        ) : (
+          <div />
+        )}
+        <Landings rows={landingRows} selected={slice.app} onSelect={(app) => patchSlice({ app })} />
+      </div>
 
       <InsightBoard rows={insights} onSlice={patchSlice} />
       <BehaviorBoard notes={behavior} onSlice={patchSlice} />
@@ -314,18 +416,6 @@ export default function App() {
           hour={slice.hour}
           onHour={(hour) => patchSlice({ hour, band: "all" })}
         />
-      ) : null}
-
-      {tools.length > 0 ? (
-        <section className="section">
-          <h2>tools</h2>
-          <ToolsChart
-            rows={tools}
-            selected={slice.app}
-            onSelect={(app) => patchSlice({ app })}
-            maxMinutes={tools[0]?.minutes ?? 1}
-          />
-        </section>
       ) : null}
 
       {showPhoneSection && phone ? (
@@ -364,7 +454,7 @@ export default function App() {
               ? "Origin pull + seed"
               : "seed copy"}
           <span className="foot-sep"> · </span>
-          hard marks are real samples · phone summaries stay off the hour grid · timed sessions sit on it
+          refresh ~90s while this tab is open · phone needs timed sessions to sit on the inner ring
         </div>
       ) : null}
     </div>

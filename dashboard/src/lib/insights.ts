@@ -18,6 +18,7 @@ import {
   phoneMinutes,
   switches,
 } from "./metrics";
+import { overlapStats } from "./clock";
 import type { Insight, PhoneReport, Sample, Slice } from "./types";
 import { applyPhoneSlice, applySampleSlice, sliceActive } from "./filters";
 
@@ -86,6 +87,25 @@ export function generateInsights(
         slice: { overlap: true, app: hit.mac.app },
       });
     }
+  }
+
+  const overlap = overlapStats(samples);
+  if (overlap.dual > 0.5 && !sliced) {
+    out.push({
+      id: "simultaneous",
+      kicker: "together",
+      title: `${prettyDuration(overlap.dual)} with two devices in front at once.`,
+      detail:
+        [
+          overlap.macMsi ? `Mac+MSI ${prettyDuration(overlap.macMsi)}.` : "",
+          overlap.macPhone ? `Mac+Phone ${prettyDuration(overlap.macPhone)}.` : "",
+          overlap.msiPhone ? `MSI+Phone ${prettyDuration(overlap.msiPhone)}.` : "",
+          overlap.triple ? `All three ${prettyDuration(overlap.triple)}.` : "",
+        ]
+          .filter(Boolean)
+          .join(" ") || "Overlapping stretches from estimated look windows, capped at 20 min.",
+      slice: { overlap: true },
+    });
   }
 
   if (phone) {

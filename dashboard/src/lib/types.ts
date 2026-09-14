@@ -2,6 +2,8 @@ export type DeviceKey = "mac" | "msi" | "phone";
 
 export type AppClass = "browser" | "chat" | "social" | "food" | "system" | "other";
 
+export type Intent = "make" | "consume" | "life" | "system";
+
 export type Band = "all" | "morning" | "afternoon" | "evening" | "night";
 
 export type RawSample = {
@@ -66,6 +68,7 @@ export type Slice = {
   device: DeviceKey | "all";
   app: string | null;
   cls: AppClass | "all";
+  intent: Intent | "all";
   hour: number | null;
   band: Band;
   overlap: boolean;

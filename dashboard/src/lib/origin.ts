@@ -2,6 +2,7 @@ import {
   coerceTs,
   emptyLive,
   mergeMeta,
+  mergePhoneReports,
   normalizePhone,
   parseIngestBody,
   phonesFromSamples,
@@ -45,29 +46,6 @@ function latestStamp(values: Array<string | null | undefined>): string | null {
   const stamps = values.filter((value): value is string => Boolean(value));
   if (!stamps.length) return null;
   return stamps.sort((a, b) => parseIso(a) - parseIso(b)).at(-1) ?? null;
-}
-
-function mergePhone(existing: PhoneReport | undefined, next: PhoneReport): PhoneReport {
-  if (!existing) return next;
-  const switches =
-    existing.switches == null && next.switches == null
-      ? null
-      : Math.max(existing.switches ?? 0, next.switches ?? 0);
-  const seen = new Set(existing.top);
-  const top = [...existing.top];
-  for (const app of next.top) {
-    if (!seen.has(app)) {
-      top.push(app);
-      seen.add(app);
-    }
-  }
-  return {
-    day: next.day || existing.day,
-    hours: Math.max(existing.hours, next.hours),
-    top,
-    switches,
-    sampled: existing.sampled || next.sampled,
-  };
 }
 
 function parseForegroundTsv(text: string): RawSample[] {
@@ -115,14 +93,14 @@ export function storeFromOriginPayload(input: {
     for (const [day, row] of Object.entries(payload.phones)) {
       const record = row as PhoneReport;
       const normalized = normalizePhone(record.day || day, record);
-      if (normalized) phones[normalized.day] = mergePhone(phones[normalized.day], normalized);
+      if (normalized) phones[normalized.day] = mergePhoneReports(phones[normalized.day], normalized);
     }
   }
   if (input.reportedTsv) {
     for (const line of input.reportedTsv.split(/\r?\n/)) {
       const parsed = parsePhoneLine(line);
       if (!parsed) continue;
-      phones[parsed.day] = mergePhone(phones[parsed.day], parsed);
+      phones[parsed.day] = mergePhoneReports(phones[parsed.day], parsed);
     }
   }
 

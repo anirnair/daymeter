@@ -76,6 +76,29 @@ function asStringList(value: unknown): string[] {
   return [];
 }
 
+export function mergePhoneReports(existing: PhoneReport | undefined, next: PhoneReport): PhoneReport {
+  if (!existing) return next;
+  const switches =
+    existing.switches == null && next.switches == null
+      ? null
+      : Math.max(existing.switches ?? 0, next.switches ?? 0);
+  const seen = new Set(existing.top);
+  const top = [...existing.top];
+  for (const app of next.top) {
+    if (!seen.has(app)) {
+      top.push(app);
+      seen.add(app);
+    }
+  }
+  return {
+    day: next.day || existing.day,
+    hours: Math.max(existing.hours, next.hours),
+    top,
+    switches,
+    sampled: Boolean(existing.sampled || next.sampled),
+  };
+}
+
 export function normalizePhone(
   day: string,
   phone: { hours: number; top?: string[]; switches?: number | null; day?: string; sampled?: boolean },
@@ -426,7 +449,7 @@ export function applyIngest(store: LiveStore, parsed: ParsedIngest, nowIso: stri
   }
   const phones = { ...store.phones };
   for (const phone of parsed.phones) {
-    phones[phone.day] = phone;
+    phones[phone.day] = mergePhoneReports(phones[phone.day], phone);
     devices.phone = nowIso;
   }
   if (parsed.samples.some((s) => deviceKey(s.device) === "phone")) {
@@ -513,7 +536,9 @@ export function mergeMeta(seed: Meta, live: LiveStore | null): Meta {
     const normalized = normalizePhone(day, seed.phone);
     if (normalized) phones[normalized.day] = normalized;
   }
-  for (const [day, phone] of Object.entries(live?.phones ?? {})) phones[day] = phone;
+  for (const [day, phone] of Object.entries(live?.phones ?? {})) {
+    phones[day] = mergePhoneReports(phones[day], phone);
+  }
   const mergedSamples = [...map.values()].sort((a, b) => parseIso(a.ts) - parseIso(b.ts));
   const lastUpdated = [seed.lastUpdated, live?.lastUpdated, live?.lastIngest]
     .filter((s): s is string => Boolean(s))

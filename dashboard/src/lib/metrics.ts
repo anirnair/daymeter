@@ -103,7 +103,6 @@ export function sampleIndexOnDevice(samples: Sample[], sample: Sample): { index:
 export function overlapHalfHours(samples: Sample[]): Set<number> {
   const buckets = new Map<number, Set<DeviceKey>>();
   for (const s of samples) {
-    if (s.key !== "mac" && s.key !== "msi") continue;
     const b = halfHour(s.h);
     const set = buckets.get(b) ?? new Set<DeviceKey>();
     set.add(s.key);
@@ -111,7 +110,7 @@ export function overlapHalfHours(samples: Sample[]): Set<number> {
   }
   const both = new Set<number>();
   for (const [b, set] of buckets) {
-    if (set.has("mac") && set.has("msi")) both.add(b);
+    if (set.size >= 2) both.add(b);
   }
   return both;
 }
