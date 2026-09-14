@@ -25,7 +25,6 @@ export function sliceActive(slice: Slice): boolean {
 export function applySampleSlice(samples: Sample[], slice: Slice): Sample[] {
   const both = slice.overlap ? overlapHalfHours(samples) : null;
   return samples.filter((s) => {
-    if (slice.device === "phone") return false;
     if (slice.device !== "all" && s.key !== slice.device) return false;
     if (slice.app && s.app !== slice.app) return false;
     if (slice.cls !== "all" && s.cls !== slice.cls) return false;
@@ -55,7 +54,6 @@ export function applyPhoneSlice(phone: PhoneReport | null, slice: Slice): PhoneR
 }
 
 export function matchSample(s: Sample, slice: Slice, both: Set<number>): boolean {
-  if (slice.device === "phone") return false;
   if (slice.device !== "all" && s.key !== slice.device) return false;
   if (slice.app && s.app !== slice.app) return false;
   if (slice.cls !== "all" && s.cls !== slice.cls) return false;

@@ -6,10 +6,13 @@ import { ToolsChart } from "./components/ToolsChart";
 import { PhoneBreakdown } from "./components/PhoneBreakdown";
 import { FilterBar } from "./components/FilterBar";
 import { InsightBoard } from "./components/InsightBoard";
+import { BehaviorBoard } from "./components/BehaviorBoard";
 import { HourMatrix } from "./components/HourMatrix";
 import { EventLog } from "./components/EventLog";
 import { Inspector } from "./components/Inspector";
+import { FreshnessBar } from "./components/Freshness";
 import { loadDaymeter } from "./lib/load";
+import { generateBehavior } from "./lib/behavior";
 import {
   DEVICE_LABEL,
   prettyDate,
@@ -53,12 +56,36 @@ export default function App() {
   const [slice, setSlice] = useState<Slice>(EMPTY_SLICE);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [animateHero, setAnimateHero] = useState(false);
+  const booted = useRef(false);
 
   useEffect(() => {
-    void loadDaymeter().then((loaded) => {
-      setData(loaded);
-      setDay(loaded.days.length > 1 ? "all" : loaded.days[0] ?? "all");
-    });
+    let stop = false;
+    async function tick() {
+      try {
+        const loaded = await loadDaymeter();
+        if (stop) return;
+        setData(loaded);
+        if (!booted.current) {
+          booted.current = true;
+          setDay(loaded.days.length > 1 ? "all" : loaded.days[0] ?? "all");
+        }
+      } catch (err) {
+        console.error(err);
+      }
+    }
+    void tick();
+    const id = window.setInterval(tick, 60_000);
+    const onVis = () => {
+      if (document.visibilityState === "visible") void tick();
+    };
+    document.addEventListener("visibilitychange", onVis);
+    window.addEventListener("focus", onVis);
+    return () => {
+      stop = true;
+      window.clearInterval(id);
+      document.removeEventListener("visibilitychange", onVis);
+      window.removeEventListener("focus", onVis);
+    };
   }, []);
 
   const dayOrder = useMemo(() => {
@@ -77,11 +104,16 @@ export default function App() {
   const both = useMemo(() => overlapHalfHours(daySamples), [daySamples]);
   const sameSecond = useMemo(() => coincidences(daySamples), [daySamples]);
 
-  const computerMin = viewSamples.reduce((n, s) => n + s.minutes, 0);
+  const phoneLooks = viewSamples.filter((s) => s.key === "phone");
+  const computerView = viewSamples.filter((s) => s.key !== "phone");
+  const computerMin = computerView.reduce((n, s) => n + s.minutes, 0);
   const dayMacMin = deviceMinutes(daySamples, "mac");
   const dayMsiMin = deviceMinutes(daySamples, "msi");
-  const dayPhoneMin = phoneMinutes(dayPhone);
-  const phoneMinSlice = phoneMinutes(phone);
+  const dayPhoneMin = Math.max(deviceMinutes(daySamples, "phone"), phoneMinutes(dayPhone));
+  const phoneMinSlice = Math.max(
+    phoneLooks.reduce((n, s) => n + s.minutes, 0),
+    phoneMinutes(phone),
+  );
   const total = computerMin + phoneMinSlice;
 
   const macMinSlice = viewSamples.filter((s) => s.key === "mac").reduce((n, s) => n + s.minutes, 0);
@@ -154,19 +186,23 @@ export default function App() {
 
   const macLooks = daySamples.filter((s) => s.key === "mac").length;
   const msiLooks = daySamples.filter((s) => s.key === "msi").length;
+  const phoneSessionLooks = daySamples.filter((s) => s.key === "phone").length;
   const daysInView = day === "all" ? data.days : [day];
   const insights = generateInsights(daySamples, dayPhone, slice, daysInView);
+  const behavior = generateBehavior(daySamples, dayPhone, slice, daysInView);
   const selected = daySamples.find((s) => s.id === selectedId) ?? viewSamples.find((s) => s.id === selectedId) ?? null;
   const showPhoneSection = Boolean(phone);
-  const showStrip = daySamples.some((s) => s.key === "mac" || s.key === "msi") && slice.device !== "phone";
+  const timedLooks = daySamples.filter((s) => slice.device === "all" || s.key === slice.device);
+  const showStrip = timedLooks.length > 0;
   const matrixSamples = applySampleSlice(daySamples, { ...slice, hour: null, band: "all" });
-  const showMatrix = showStrip && matrixSamples.length > 0;
-  const showLog = daySamples.length > 0 && slice.device !== "phone";
+  const showMatrix = matrixSamples.length > 0;
+  const showLog = timedLooks.length > 0;
   const sliced = sliceActive(slice);
 
   return (
     <div className="shell">
       <div className="brand">daymeter</div>
+      <FreshnessBar freshness={data.freshness} />
 
       <div className="day-picker" aria-label="day">
         <button
@@ -224,8 +260,14 @@ export default function App() {
           {
             key: "phone",
             minutes: dayPhoneMin,
-            available: Boolean(dayPhone),
-            meta: dayPhone?.switches != null ? `${dayPhone.switches} jumps` : dayPhone ? "reported" : "no report",
+            available: Boolean(dayPhone) || phoneSessionLooks > 0,
+            meta: phoneSessionLooks
+              ? `${phoneSessionLooks} session${phoneSessionLooks === 1 ? "" : "s"}`
+              : dayPhone?.switches != null
+                ? `${dayPhone.switches} jumps`
+                : dayPhone
+                  ? "reported"
+                  : "no report",
           },
         ]}
       />
@@ -249,6 +291,7 @@ export default function App() {
       ) : null}
 
       <InsightBoard rows={insights} onSlice={patchSlice} />
+      <BehaviorBoard notes={behavior} onSlice={patchSlice} />
 
       {showStrip ? (
         <section className="section">
@@ -293,6 +336,7 @@ export default function App() {
             computerJumps={computerJumps}
             selected={slice.app}
             onSelect={(app) => patchSlice({ app })}
+            sampledMinutes={phoneLooks.length ? appMinutes(phoneLooks) : []}
           />
         </section>
       ) : null}
@@ -314,7 +358,13 @@ export default function App() {
         <div className="foot">
           Updated {prettyUpdated(data.lastUpdated)}
           <span className="foot-sep"> · </span>
-          hard marks are real samples · phone is reported · blanks are missing polls
+          {data.freshness.source === "live"
+            ? "live store + seed"
+            : data.freshness.source === "origin"
+              ? "Origin pull + seed"
+              : "seed copy"}
+          <span className="foot-sep"> · </span>
+          hard marks are real samples · phone summaries stay off the hour grid · timed sessions sit on it
         </div>
       ) : null}
     </div>
