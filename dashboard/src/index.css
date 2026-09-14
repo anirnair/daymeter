@@ -625,6 +625,8 @@ number-flow-react {
 
 .behavior-group h3 {
   margin: 11px 0 0;
+  padding: 0;
+  border: 0;
   font-size: var(--fs);
   font-weight: 400;
   letter-spacing: 0.06em;

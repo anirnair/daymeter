@@ -25,7 +25,7 @@ export function BehaviorBoard({ notes, onSlice }: Props) {
         if (!rows.length) return null;
         return (
           <div className="behavior-group" key={kind}>
-            <h3 className={kind}>{TITLES[kind]}</h3>
+            <h3>{TITLES[kind]}</h3>
             <div className="insights">
               {rows.map((row) => (
                 <button
