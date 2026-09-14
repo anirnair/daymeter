@@ -9,7 +9,7 @@ type Props = {
 };
 
 const HOURS = Array.from({ length: 24 }, (_, i) => i);
-const LANES: DeviceKey[] = ["mac", "msi"];
+const LANES: DeviceKey[] = ["mac", "msi", "phone"];
 
 export function HourMatrix({ samples, hour, onHour }: Props) {
   const counts = new Map<string, number>();
@@ -35,7 +35,7 @@ export function HourMatrix({ samples, hour, onHour }: Props) {
             ))}
           </div>
         </div>
-        {LANES.map((lane) => (
+        {LANES.filter((lane) => samples.some((s) => s.key === lane)).map((lane) => (
           <div className="matrix-row" key={lane}>
             <span className={clsx("lab", lane)}>{lane}</span>
             <div className="matrix-cells">
@@ -58,7 +58,9 @@ export function HourMatrix({ samples, hour, onHour }: Props) {
           </div>
         ))}
       </div>
-      <div className="empty">empty hours stay empty · phone is not on this grid</div>
+      <div className="empty">
+        empty hours stay empty · phone sits here only when sessions have clocks
+      </div>
     </section>
   );
 }

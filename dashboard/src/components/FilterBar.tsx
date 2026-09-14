@@ -1,10 +1,11 @@
 import type { ReactNode } from "react";
 import clsx from "clsx";
 import { CLASS_LABEL, CLASS_ORDER, bandOf, classifyApp } from "../lib/classify";
+import { INTENT_LABEL, INTENT_ORDER, classifyIntent } from "../lib/intent";
 import { prettyApp, prettyHourChip } from "../lib/format";
 import { occupiedHours } from "../lib/metrics";
 import { sliceActive } from "../lib/filters";
-import type { AppClass, Band, Sample, Slice } from "../lib/types";
+import type { AppClass, Band, Intent, Sample, Slice } from "../lib/types";
 
 type Props = {
   samples: Sample[];
@@ -49,6 +50,13 @@ function visibleClasses(samples: Sample[], phoneApps: string[]): AppClass[] {
   return CLASS_ORDER.filter((cls) => set.has(cls));
 }
 
+function visibleIntents(samples: Sample[], phoneApps: string[]): Intent[] {
+  const set = new Set<Intent>();
+  for (const s of samples) set.add(classifyIntent(s.app, s.cls, s.title, s.url));
+  for (const app of phoneApps) set.add(classifyIntent(app));
+  return INTENT_ORDER.filter((intent) => set.has(intent));
+}
+
 function bandHas(samples: Sample[], band: Exclude<Band, "all">): boolean {
   return samples.some((s) => bandOf(s.h) === band);
 }
@@ -57,6 +65,7 @@ export function FilterBar({ samples, phoneApps, slice, onChange, onClear, canOve
   const hours = occupiedHours(samples);
   const apps = [...new Set([...samples.map((s) => s.app), ...phoneApps])].filter(Boolean);
   const classes = visibleClasses(samples, phoneApps);
+  const intents = visibleIntents(samples, phoneApps);
   const bands = (["evening", "night", "morning", "afternoon"] as const).filter(
     (band) => bandHas(samples, band) || slice.band === band,
   );
@@ -71,6 +80,17 @@ export function FilterBar({ samples, phoneApps, slice, onChange, onClear, canOve
             label={CLASS_LABEL[cls]}
             pressed={slice.cls === cls}
             onClick={() => onChange({ cls: slice.cls === cls ? "all" : cls })}
+          />
+        ))}
+      </Row>
+      <Row kicker="use">
+        <Chip label="all" pressed={slice.intent === "all"} onClick={() => onChange({ intent: "all" })} />
+        {intents.map((intent) => (
+          <Chip
+            key={intent}
+            label={INTENT_LABEL[intent]}
+            pressed={slice.intent === intent}
+            onClick={() => onChange({ intent: slice.intent === intent ? "all" : intent })}
           />
         ))}
       </Row>
@@ -112,7 +132,7 @@ export function FilterBar({ samples, phoneApps, slice, onChange, onClear, canOve
       <Row kicker="cut">
         {canOverlap ? (
           <Chip
-            label="both awake"
+            label="together"
             pressed={slice.overlap}
             onClick={() => onChange({ overlap: !slice.overlap })}
           />

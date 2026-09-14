@@ -1,0 +1,28 @@
+{
+  "installCommand": "npm install --prefix dashboard",
+  "buildCommand": "npm run build --prefix dashboard",
+  "outputDirectory": "dashboard/dist",
+  "framework": null,
+  "functions": {
+    "api/*.ts": {
+      "includeFiles": "dashboard/public/**"
+    }
+  },
+  "headers": [
+    {
+      "source": "/(.*)",
+      "headers": [
+        {
+          "key": "Cache-Control",
+          "value": "public, max-age=0, must-revalidate"
+        }
+      ]
+    }
+  ],
+  "crons": [
+    {
+      "path": "/api/agent",
+      "schedule": "0 18 * * *"
+    }
+  ]
+}

@@ -2,32 +2,46 @@ import clsx from "clsx";
 import { FloatCard } from "./FloatCard";
 import { CLASS_LABEL, classifyApp } from "../lib/classify";
 import { prettyApp, prettyDuration } from "../lib/format";
-import type { PhoneReport } from "../lib/types";
+import type { DeviceKey, PhoneReport } from "../lib/types";
 
 type JumpRow = { name: string; jumps: number; tone: "mac" | "msi" | "phone" };
+type AppRow = { app: string; minutes: number; devices: DeviceKey[] };
 
 type Props = {
   phone: PhoneReport;
   computerJumps: JumpRow[];
   selected: string | null;
   onSelect: (app: string | null) => void;
+  sampledMinutes?: AppRow[];
 };
 
-export function PhoneBreakdown({ phone, computerJumps, selected, onSelect }: Props) {
-  const minutes = phone.hours * 60;
-  const seconds = phone.hours * 3600;
+export function PhoneBreakdown({
+  phone,
+  computerJumps,
+  selected,
+  onSelect,
+  sampledMinutes = [],
+}: Props) {
+  const sessionMin = sampledMinutes.reduce((n, row) => n + row.minutes, 0);
+  const minutes = Math.max(sessionMin, phone.hours * 60);
+  const seconds = minutes * 60;
   const every =
     phone.switches && phone.switches > 0
       ? Math.max(1, Math.round(seconds / phone.switches))
       : null;
   const phoneJumps = phone.switches
-    ? Math.round(phone.switches / Math.max(phone.hours, 0.01))
+    ? Math.round(phone.switches / Math.max(minutes / 60, 0.01))
     : 0;
   const rows: JumpRow[] = [
     ...computerJumps,
     { name: "Phone", jumps: phoneJumps, tone: "phone" as const },
   ].filter((row) => row.jumps > 0);
   const max = Math.max(...rows.map((r) => r.jumps), 1);
+  const sampled = phone.sampled || sampledMinutes.length > 0;
+  const appRows = sampledMinutes.length
+    ? sampledMinutes
+    : phone.top.map((app) => ({ app, minutes: 0, devices: ["phone" as const] }));
+  const maxApp = Math.max(...appRows.map((row) => row.minutes), 1);
 
   return (
     <>
@@ -35,6 +49,7 @@ export function PhoneBreakdown({ phone, computerJumps, selected, onSelect }: Pro
         {prettyDuration(minutes)}
         {phone.switches != null ? ` · ${phone.switches} jumps` : ""}
         {every != null ? ` · about every ${every} seconds` : ""}
+        {sampled ? " · timed sessions" : " · day-summary"}
       </div>
       {rows.length > 0 ? (
         <div className="section" style={{ gap: 8 }}>
@@ -45,7 +60,11 @@ export function PhoneBreakdown({ phone, computerJumps, selected, onSelect }: Pro
               title={row.name}
               lines={[
                 `${row.jumps} jumps per hour`,
-                row.name === "Phone" ? "reported by Writer" : "from app changes between looks",
+                row.name === "Phone"
+                  ? sampled
+                    ? "from timestamped sessions"
+                    : "reported by Writer"
+                  : "from app changes between looks",
               ]}
             >
               <button type="button" className="tool-row">
@@ -63,27 +82,41 @@ export function PhoneBreakdown({ phone, computerJumps, selected, onSelect }: Pro
         </div>
       ) : null}
       <div className="section" style={{ gap: 8 }}>
-        <h2>apps in the mix</h2>
-        {phone.top.map((app) => (
+        <h2>{sampled ? "apps on phone" : "apps in the mix"}</h2>
+        {appRows.map((row) => (
           <FloatCard
-            key={app}
-            title={prettyApp(app)}
+            key={row.app}
+            title={prettyApp(row.app)}
             lines={[
-              `${CLASS_LABEL[classifyApp(app)]} · in the mix on Phone`,
-              `${prettyDuration(minutes)} total, not split by app`,
+              `${CLASS_LABEL[classifyApp(row.app)]} · Phone`,
+              sampled && row.minutes
+                ? prettyDuration(row.minutes)
+                : `${prettyDuration(minutes)} total, not split by app`,
               phone.switches != null
-                ? `${phone.switches} jumps across ${phone.top.length} apps`
-                : "reported by Writer",
+                ? `${phone.switches} jumps across ${appRows.length} apps`
+                : sampled
+                  ? "timed session"
+                  : "reported by Writer",
             ]}
           >
             <button
               type="button"
               className="phone-app"
-              aria-pressed={selected === app}
-              onClick={() => onSelect(selected === app ? null : app)}
+              aria-pressed={selected === row.app}
+              onClick={() => onSelect(selected === row.app ? null : row.app)}
             >
-              <span className="name">{prettyApp(app)}</span>
-              <span className="bar-n">{CLASS_LABEL[classifyApp(app)]}</span>
+              <span className="name">{prettyApp(row.app)}</span>
+              {sampled && row.minutes ? (
+                <span className="bar-track">
+                  <span
+                    className="bar-fill phone"
+                    style={{ width: `${Math.max(4, (row.minutes / maxApp) * 100)}%` }}
+                  />
+                </span>
+              ) : null}
+              <span className="bar-n">
+                {sampled && row.minutes ? prettyDuration(row.minutes) : CLASS_LABEL[classifyApp(row.app)]}
+              </span>
             </button>
           </FloatCard>
         ))}

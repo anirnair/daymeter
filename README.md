@@ -31,19 +31,27 @@ A centered dashboard of the day, not a timesheet or a score.
 
 **Three device cards** sit under that number: Mac (gold), MSI (teal), Phone (muted purple). Tap one to slice the rest of the page.
 
-**The strip** is still the evening picture: hard rectangles on two lanes. A gap is a missing look, not idle time.
+**The strip** is still the evening picture: hard rectangles on the lanes that actually have clocks. A gap is a missing look, not idle time. Phone gets a lane only when sessions arrive with start times.
 
-**Tools** break down the apps. Phone has its own section because you jump more there — hours, jump rate against the computers, and the apps in the mix (Writer does not yet split phone time per app).
+**Readings** are first-order facts from the looks. **Second order** sits under that: insights, wastage, recovery, improvement — inferred, not extra events.
+
+**Tools** break down the apps. Phone has its own section because you jump more there. A Writer summary is hours + mix + switches. Timestamped sessions split time per app and can sit on the hour grid.
+
+A **live / origin / seed** line under the name says how stale the picture is. The page pulls `/api/live` about once a minute, and if that route is down it still reads Writer from Origin dashboard11.
 
 ---
 
 ## How a day gets into the picture
 
-1. **Mac and MSI** quietly note the frontmost app every so often. Those looks become the gold and teal marks.
-2. **Phone** is not sampled the same way. Writer sends a *reported* summary (hours, top apps, how often you switched).
-3. Both land on the same day strip. Phone is never mixed into the computer marks so you can still tell “we looked” from “the phone told us.”
+GitHub `data.json` is a freeze. It goes stale the moment a collector POSTs somewhere else.
 
-Browser tabs and exact URLs are **not collected yet** on either computer. That’s an honest hole, called out on the machine views.
+Near-real-time (a few minutes lag is fine):
+
+1. **Mac and MSI** POST the frontmost app every 1–2 minutes to `https://daymeter.vercel.app/api/ingest` — scripts in [`collectors/`](collectors/README.md). When a browser is in front, Mac also sends the tab title and URL.
+2. **Phone** still sends a Writer *day-summary* (hours, top apps, switches) to Origin dashboard 9/11. The live page **pulls that Origin strip** on every refresh so the reported line stays current without retargeting the installed APK. For accurate grain, POST `sessions` with `ts`, `end`/`seconds`, and `app`, or pipe `adb shell dumpsys usagestats` through [`collectors/phone-dumpsys.py`](collectors/phone-dumpsys.py) so Phone can sit on the hour grid.
+3. The dashboard merges seed < Origin < live store. Production ingest writes Vercel Runtime Cache (Blob when `BLOB_READ_WRITE_TOKEN` exists). Local Vite writes `dashboard/.data/live.json`. It does not invent marks for the blanks. If `/api/live` is missing, the browser still pulls Origin directly (dashboard11 already allows CORS).
+
+The **behavior agent** (custom instructions in [`agent/INSTRUCTIONS.md`](agent/INSTRUCTIONS.md), Cursor agent in `.cursor/agents/daymeter-behavior.md`) re-reads the live log, checks collector freshness, and writes the second-order section. It never invents samples.
 
 ---
 
@@ -81,10 +89,14 @@ The latest Writer build exists because the previous one could crash if you opene
 
 This is the **product home**: the idea, the rules, the live links, and the files that make the strip and the Writer download page.
 
-- **`dashboard/`** — the day strip you open in a browser (the same picture as the latest Origin take).
+- **`dashboard/`** — the day strip you open in a browser, plus `/api/ingest`, `/api/live`, `/api/agent`.
+- **`collectors/`** — Mac, MSI, and phone session POST helpers.
+- **`agent/`** — custom instructions for the behavior agent.
 - **`writer/`** — the phone download door, plus the Writer app file.
 
 Those two folders are what stay published. They do not turn off when an Origin session ends.
+
+If you connect this GitHub repo to the existing `daymeter` Vercel project, leave the root at the repo (this `vercel.json` builds `dashboard/` and serves `/api/*`). Or set the Vercel root to `dashboard/`. Until GitHub is linked, production file-deploys load `dashboard/ship/api/*.js` (rebuild with `npm run bundle:api --prefix dashboard`) from this repo so ingest does not depend on a one-shot seed. Collector POSTs write Runtime Cache on Vercel; add a Blob store if you want the live log to survive cache eviction. Until `/api/live` exists on the site, the page still pulls Writer from Origin dashboard11.
 
 The numbered Origin takes (`dashboard` … `dashboard11`, `writer-apk` … `writer-apk4`) are still up too. Writer on the phone currently sends its day-summary to the Origin strip (take 9), which is why that URL needs to stay live as well.
 

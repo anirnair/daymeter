@@ -1,5 +1,5 @@
 import { CLASS_LABEL } from "../lib/classify";
-import { DEVICE_LABEL, prettyApp, prettyClock, prettyDuration, prettyTime } from "../lib/format";
+import { DEVICE_LABEL, prettyApp, prettyClock, prettyDuration, prettyTime, sampleDetail } from "../lib/format";
 import { coincidences, sampleIndexOnDevice } from "../lib/metrics";
 import type { Sample, Slice } from "../lib/types";
 
@@ -27,11 +27,12 @@ export function Inspector({ sample, all, onSlice, onClose }: Props) {
         {prettyApp(sample.app)} · {DEVICE_LABEL[sample.key]} · {prettyTime(sample.ts)}
       </div>
       <div className="inspector-detail">
-        {prettyClock(sample.ts)} · {CLASS_LABEL[sample.cls]} · est {prettyDuration(sample.minutes)} · look {index} of {total} for this app
+        {prettyClock(sample.ts)} · {CLASS_LABEL[sample.cls]} · {sample.explicit ? "" : "est "}
+        {prettyDuration(sample.minutes)} · look {index} of {total} for this app
         {other
           ? ` · same second as ${prettyApp(other.app)} on ${DEVICE_LABEL[other.key]}`
           : ""}
-        . Tabs / URLs not collected.
+        . {sampleDetail(sample)}.
       </div>
       <div className="rail-chips">
         <button type="button" className="chip" aria-label="this hour" onClick={() => onSlice({ hour: Math.floor(sample.h), band: "all" })}>
