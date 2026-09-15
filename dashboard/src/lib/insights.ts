@@ -61,7 +61,7 @@ export function generateInsights(
       out.push({
         id: "stale-log",
         kicker: "freshness",
-        title: `This picture is ${prettyLag(freshness.lastEvent, now)} old.`,
+        title: `Newest look was ${prettyLag(freshness.lastEvent, now)}.`,
         detail:
           "The hero number is estimated from the last looks that exist, not a live meter. Computers only move when a collector polls. Phone is a Writer day-summary. Blanks after the last look are missing, not zero use.",
       });

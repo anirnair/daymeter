@@ -154,7 +154,8 @@ type LivePayload = Meta & {
 export async function loadDaymeter(): Promise<DaymeterData> {
   try {
     const res = await fetch("/api/live", { cache: "no-store" });
-    if (res.ok) {
+    const type = res.headers.get("content-type") || "";
+    if (res.ok && type.includes("json")) {
       const live = (await res.json()) as LivePayload;
       if (live && (Array.isArray(live.samples) || live.phones)) {
         return hydrate(live, {
