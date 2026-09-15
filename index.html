@@ -1,0 +1,798 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <title>daymeter</title>
+  <meta name="daymeter-built" content="2026-09-15 20:29 IST" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --bg: #0e0e0e;
+      --ink: #f0f0f0;
+      --dim: #7a7a7a;
+      --mute: #2a2a2a;
+      --mac: #c4a06a;
+      --msi: #6aaba0;
+      --phone: #8a8498;
+      --hot: #f0a070;
+      --card: #141414;
+    }
+    * { box-sizing: border-box; }
+    html, body {
+      margin: 0;
+      min-height: 100%;
+      background: var(--bg);
+      color: var(--ink);
+      font: 13px/1.45 "IBM Plex Mono", ui-monospace, monospace;
+      font-variant-numeric: tabular-nums;
+    }
+    body {
+      padding: 16px 14px 32px;
+      padding-left: max(14px, env(safe-area-inset-left));
+      padding-right: max(14px, env(safe-area-inset-right));
+      max-width: 720px;
+      margin: 0 auto;
+    }
+    button {
+      font: inherit;
+      color: var(--dim);
+      background: none;
+      border: 0;
+      padding: 0;
+      cursor: pointer;
+    }
+    button[aria-pressed="true"] { color: var(--ink); }
+    button:focus-visible, .mark:focus-visible {
+      outline: 1px solid var(--dim);
+      outline-offset: 2px;
+    }
+    .top {
+      display: flex;
+      justify-content: space-between;
+      align-items: baseline;
+      margin-bottom: 18px;
+      color: var(--dim);
+    }
+    .top .name { color: var(--ink); }
+    .top .lu { font-size: 11px; color: var(--mute); }
+
+    .day-picker {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 12px;
+      margin-bottom: 22px;
+    }
+    .day-picker button {
+      border: 1px solid var(--mute);
+      padding: 6px 10px;
+      min-width: 36px;
+      min-height: 36px;
+    }
+    .day-picker button:disabled { opacity: 0.3; cursor: default; }
+    .day-picker .human {
+      color: var(--ink);
+      text-align: center;
+      min-width: 11em;
+      font-weight: 500;
+    }
+    .day-note { text-align: center; color: var(--dim); font-size: 12px; margin: -10px 0 18px; }
+
+    .hero {
+      text-align: center;
+      margin-bottom: 20px;
+    }
+    .hero .label { color: var(--dim); font-size: 11px; letter-spacing: 0.06em; text-transform: uppercase; margin-bottom: 6px; }
+    .hero .total { font-size: 34px; font-weight: 500; letter-spacing: -0.02em; line-height: 1.1; }
+    .hero .sub { color: var(--dim); font-size: 12px; margin-top: 8px; max-width: 28em; margin-left: auto; margin-right: auto; }
+
+    .stacks {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 10px;
+      margin-bottom: 22px;
+    }
+    @media (min-width: 560px) {
+      .stacks { grid-template-columns: 1fr 1fr 1fr; gap: 12px; }
+    }
+    .stack {
+      border: 1px solid var(--mute);
+      padding: 12px 12px 10px;
+      text-align: center;
+    }
+    .stack .dev { font-size: 11px; margin-bottom: 6px; }
+    .stack.mac .dev { color: var(--mac); }
+    .stack.msi .dev { color: var(--msi); }
+    .stack.phone .dev { color: var(--phone); }
+    .stack .val { font-size: 20px; font-weight: 500; margin-bottom: 4px; }
+    .stack .meta { color: var(--dim); font-size: 11px; }
+    .stack .bars {
+      display: flex;
+      gap: 2px;
+      justify-content: center;
+      flex-wrap: wrap;
+      margin-top: 10px;
+      min-height: 10px;
+    }
+    .stack .bars i {
+      display: block;
+      width: 8px;
+      height: 8px;
+    }
+    .stack.mac .bars i { background: var(--mac); }
+    .stack.msi .bars i { background: var(--msi); }
+    .stack.phone .bars i { background: var(--phone); }
+    .stack.empty { opacity: 0.55; }
+
+    nav.views {
+      display: flex;
+      justify-content: center;
+      gap: 14px;
+      margin-bottom: 12px;
+      color: var(--dim);
+    }
+    .filters {
+      border: 1px solid var(--mute);
+      padding: 12px 12px 10px;
+      margin-bottom: 18px;
+      color: var(--dim);
+      font-size: 12px;
+    }
+    .filters .row {
+      display: grid;
+      grid-template-columns: 64px 1fr;
+      gap: 8px;
+      align-items: start;
+      margin-bottom: 8px;
+    }
+    .filters .row:last-child { margin-bottom: 0; }
+    .filters .k {
+      color: var(--mute);
+      text-transform: uppercase;
+      font-size: 10px;
+      letter-spacing: 0.06em;
+      padding-top: 4px;
+    }
+    .filters .v {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px 10px;
+      align-items: center;
+    }
+    .filters button {
+      border: 1px solid transparent;
+      padding: 3px 8px;
+      min-height: 28px;
+    }
+    .filters button[aria-pressed="true"] {
+      color: var(--ink);
+      border-color: var(--mute);
+    }
+    .filters .sep { color: var(--mute); }
+    .filters .clear-row {
+      margin-top: 8px;
+      text-align: right;
+    }
+    .filter-summary {
+      text-align: center;
+      color: var(--dim);
+      font-size: 11px;
+      margin: -8px 0 14px;
+    }
+
+    .strip-wrap { margin-bottom: 8px; }
+    .strip-label { color: var(--dim); font-size: 11px; text-align: center; margin-bottom: 8px; }
+    .axis {
+      display: flex;
+      justify-content: space-between;
+      color: var(--dim);
+      font-size: 10px;
+      margin-bottom: 4px;
+      padding: 0 2px;
+    }
+    .lane {
+      display: grid;
+      grid-template-columns: 36px 1fr;
+      gap: 8px;
+      align-items: center;
+      margin-bottom: 6px;
+    }
+    .lane .dev { font-size: 11px; color: var(--dim); }
+    .lane.mac .dev { color: var(--mac); }
+    .lane.msi .dev { color: var(--msi); }
+    .track {
+      position: relative;
+      height: 16px;
+      border-top: 1px solid var(--mute);
+      border-bottom: 1px solid var(--mute);
+    }
+    .mark {
+      position: absolute;
+      top: 2px;
+      bottom: 2px;
+      width: 12px;
+      cursor: pointer;
+      touch-action: manipulation;
+    }
+    .mark.mac { background: var(--mac); }
+    .mark.msi { background: var(--msi); }
+    .mark.dimmed { opacity: 0.18; }
+    .mark.selected { box-shadow: 0 0 0 1px var(--bg), 0 0 0 2px var(--ink); z-index: 2; }
+
+    .float-card {
+      display: none;
+      position: fixed;
+      z-index: 40;
+      min-width: 180px;
+      max-width: min(280px, calc(100vw - 24px));
+      background: var(--card);
+      border: 1px solid var(--mute);
+      padding: 10px 12px;
+      pointer-events: none;
+      box-shadow: 0 8px 24px rgba(0,0,0,0.45);
+    }
+    .float-card.on { display: block; }
+    .float-card .t { color: var(--ink); font-weight: 500; margin-bottom: 4px; }
+    .float-card .r { color: var(--dim); font-size: 12px; }
+    @media (max-width: 559px) {
+      .float-card {
+        left: 12px !important;
+        right: 12px;
+        bottom: max(12px, env(safe-area-inset-bottom));
+        top: auto !important;
+        max-width: none;
+        width: auto;
+      }
+    }
+
+    .panel { margin-top: 18px; }
+    .panel .h {
+      color: var(--dim);
+      font-size: 11px;
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+      margin-bottom: 10px;
+      text-align: center;
+    }
+    .pkg {
+      display: grid;
+      grid-template-columns: 1fr auto;
+      gap: 8px;
+      align-items: center;
+      margin-bottom: 8px;
+      padding-bottom: 8px;
+      border-bottom: 1px solid var(--mute);
+    }
+    .pkg:last-child { border-bottom: 0; }
+    .pkg .name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .pkg .dur { color: var(--dim); font-size: 12px; }
+    .pkg .blocks { display: flex; gap: 2px; flex-wrap: wrap; margin-top: 4px; }
+    .pkg .blocks i { width: 7px; height: 7px; background: var(--phone); display: block; }
+
+    .contrib-chart {
+      border: 1px solid var(--mute);
+      padding: 12px;
+      margin-top: 16px;
+    }
+    .contrib-chart .h { margin-bottom: 12px; }
+    .contrib-row {
+      display: grid;
+      grid-template-columns: 48px 1fr 52px;
+      gap: 8px;
+      align-items: center;
+      margin-bottom: 8px;
+      font-size: 12px;
+    }
+    .contrib-row .bar {
+      height: 10px;
+      background: var(--mute);
+      position: relative;
+    }
+    .contrib-row .bar > span {
+      display: block;
+      height: 100%;
+    }
+    .contrib-row.mac .bar > span { background: var(--mac); }
+    .contrib-row.msi .bar > span { background: var(--msi); }
+    .contrib-row.phone .bar > span { background: var(--phone); }
+    .contrib-row .n { color: var(--dim); text-align: right; }
+
+    .empty { color: var(--dim); text-align: center; padding: 12px; }
+    .hidden { display: none !important; }
+    .sparse { color: var(--dim); font-size: 12px; text-align: center; margin-top: 8px; }
+  </style>
+</head>
+<body>
+  <div class="top">
+    <div class="name">daymeter</div>
+    <div class="lu" id="last-updated">updated · 2026-09-12 00:33 IST</div>
+  </div>
+
+  <div class="day-picker" id="day-picker"></div>
+  <div class="day-note" id="day-note"></div>
+
+  <div class="filters" id="filters"></div>
+  <div class="filter-summary" id="filter-summary"></div>
+
+  <section class="hero" id="hero"></section>
+  <section class="stacks" id="stacks"></section>
+
+  <div class="contrib-chart" id="contrib"></div>
+
+  <nav class="views" aria-label="views">
+    <button type="button" id="tab-overview" aria-pressed="true">marks</button>
+    <button type="button" id="tab-phone" aria-pressed="false" class="hidden" hidden>phone</button>
+  </nav>
+
+  <section id="view-marks">
+    <div class="strip-wrap">
+      <div class="strip-label">sample marks</div>
+      <div id="strip"></div>
+    </div>
+  </section>
+
+  <section id="view-phone" class="panel hidden">
+    <div class="h">phone · reported packages</div>
+    <div id="phone-body"></div>
+  </section>
+
+  <div class="float-card" id="float-card" role="tooltip"></div>
+
+  <script>
+    const DAY_START = 6, DAY_END = 24, POLL_H = 0.5;
+    const MONTHS = ["January","February","March","April","May","June","July","August","September","October","November","December"];
+
+    const state = {
+      view: "overview",
+      day: null,
+      days: [],
+      allSamples: [],
+      phones: {},
+      sentences: {},
+      phone: null,
+      deviceFilter: "all",
+      sourceFilter: "all",
+      app: null,
+      selectedId: null,
+    };
+
+    function humanDay(isoDay) {
+      const [y, m, d] = isoDay.split("-").map(Number);
+      if (!y || !m || !d) return isoDay;
+      return d + " " + MONTHS[m - 1] + " " + y;
+    }
+
+    function dayKeyFromTs(ts) {
+      const m = ts && ts.match(/^(\d{4}-\d{2}-\d{2})/);
+      return m ? m[1] : null;
+    }
+    function deviceKey(name) {
+      const n = (name || "").toLowerCase();
+      if (n.includes("msi") || n.includes("windows")) return "msi";
+      if (n.includes("phone") || n.includes("android")) return "phone";
+      return "mac";
+    }
+    function hourFrac(iso) {
+      const m = iso.match(/T(\d{2}):(\d{2})/);
+      return m ? +m[1] + (+m[2] / 60) : null;
+    }
+    function timeLabel(iso) {
+      const m = iso.match(/T(\d{2}):(\d{2})/);
+      return m ? m[1] + ":" + m[2] : "";
+    }
+    function parseTSV(text) {
+      return text.trim().split(/\n+/).filter(Boolean).map((line) => {
+        const [ts, device, app] = line.split("\t");
+        return { ts, device, app: (app || "").trim() };
+      });
+    }
+    function samplesForDay(day) {
+      return state.allSamples.filter((s) => dayKeyFromTs(s.ts) === day);
+    }
+    function taggedSamples(samples) {
+      return samples.map((s, i) => {
+        const key = deviceKey(s.device);
+        const h = hourFrac(s.ts);
+        return { ...s, key, h, id: s.ts + "|" + key + "|" + s.app + "|" + i };
+      }).filter((s) => s.h != null && s.h >= DAY_START && s.h < DAY_END && s.key !== "phone");
+    }
+    function buildByDev(tagged) {
+      const byDev = { mac: [], msi: [] };
+      for (const s of tagged) if (byDev[s.key]) byDev[s.key].push(s);
+      return byDev;
+    }
+    function axisWindow(tagged) {
+      if (!tagged.length) return { start: DAY_START, end: DAY_END };
+      if (tagged.length < 6) {
+        const hs = tagged.map((s) => s.h);
+        let start = Math.max(DAY_START, Math.floor(Math.min(...hs)) - 1);
+        let end = Math.min(DAY_END, Math.max(Math.ceil(Math.max(...hs)) + 1, start + 2));
+        return { start, end };
+      }
+      return { start: DAY_START, end: DAY_END };
+    }
+    function pctIn(h, a, b) { return ((h - a) / (b - a)) * 100; }
+    function fmtH(h) {
+      if (h == null || isNaN(h)) return "—";
+      const n = Math.round(h * 100) / 100;
+      return n < 1 ? n.toFixed(2) + "h" : (Number.isInteger(n) ? n + "h" : n.toFixed(1) + "h");
+    }
+    function phoneHours(phone) {
+      if (!phone || phone.hours == null || phone.hours === "") return 0;
+      const n = parseFloat(String(phone.hours).replace(/h/i, ""));
+      return isNaN(n) ? 0 : n;
+    }
+
+    function deviceCoverage(list) {
+      // honest: upper bound from poll count × poll window — labeled ≤ coverage, not continuous clock
+      const n = list.length;
+      return { n, hours: n * POLL_H };
+    }
+
+    function setDay(day) {
+      if (!day || day === state.day) return;
+      state.day = day;
+      state.selectedId = null;
+      state.app = null;
+      state.deviceFilter = "all";
+      state.sourceFilter = "all";
+      state.phone = state.phones[day] || null;
+      renderAll();
+    }
+    function shiftDay(d) {
+      const i = state.days.indexOf(state.day);
+      const next = state.days[i + d];
+      if (next) setDay(next);
+    }
+    function setApp(app) {
+      state.app = app || null;
+      renderAll();
+    }
+
+    function matchSeg(s) {
+      if (state.sourceFilter === "phone") return false;
+      if (state.deviceFilter === "phone") return false;
+      if (state.app && s.app !== state.app) return false;
+      if (state.deviceFilter === "mac" && s.key !== "mac") return false;
+      if (state.deviceFilter === "msi" && s.key !== "msi") return false;
+      return true;
+    }
+    function showSamples() {
+      return state.sourceFilter !== "phone" && state.deviceFilter !== "phone";
+    }
+    function showPhonePanel() {
+      return state.sourceFilter !== "samples" && state.deviceFilter !== "mac" && state.deviceFilter !== "msi";
+    }
+
+    function showCard(s, clientX, clientY) {
+      const el = document.getElementById("float-card");
+      if (!s) { el.classList.remove("on"); return; }
+      el.innerHTML = `
+        <div class="t">${s.app}</div>
+        <div class="r">${s.key} · ${timeLabel(s.ts)}</div>
+        <div class="r">sample mark · ≤ ${POLL_H}h window</div>
+        <div class="r">not continuous clock time</div>`;
+      el.classList.add("on");
+      const pad = 12;
+      let x = clientX + 14;
+      let y = clientY + 14;
+      const w = el.offsetWidth || 200;
+      const h = el.offsetHeight || 90;
+      if (x + w > window.innerWidth - pad) x = clientX - w - 10;
+      if (y + h > window.innerHeight - pad) y = clientY - h - 10;
+      el.style.left = Math.max(pad, x) + "px";
+      el.style.top = Math.max(pad, y) + "px";
+    }
+
+    function renderDayPicker() {
+      const el = document.getElementById("day-picker");
+      const note = document.getElementById("day-note");
+      if (!state.days.length) {
+        el.innerHTML = "";
+        note.textContent = "no days in the log yet";
+        return;
+      }
+      const i = state.days.indexOf(state.day);
+      el.innerHTML = `
+        <button type="button" id="day-prev" ${i <= 0 ? "disabled" : ""} aria-label="previous day">←</button>
+        <div class="human">${humanDay(state.day)}</div>
+        <button type="button" id="day-next" ${i < 0 || i >= state.days.length - 1 ? "disabled" : ""} aria-label="next day">→</button>`;
+      document.getElementById("day-prev").onclick = () => shiftDay(-1);
+      document.getElementById("day-next").onclick = () => shiftDay(1);
+      note.textContent = state.days.length < 2
+        ? "one day in the log · prev/next wait for another real day"
+        : "";
+    }
+
+    function renderHero(byDev, phone, allTagged) {
+      const mac = deviceCoverage(byDev.mac);
+      const msi = deviceCoverage(byDev.msi);
+      const ph = phoneHours(phone);
+      const el = document.getElementById("hero");
+      const macBit = mac.n ? `mac ≤${fmtH(mac.hours)}` : `mac —`;
+      const msiBit = msi.n ? `msi ≤${fmtH(msi.hours)}` : `msi —`;
+      const phoneBit = ph ? `phone reported ${fmtH(ph)}` : `phone —`;
+      el.innerHTML = `
+        <div class="label">device contributions</div>
+        <div class="total" style="font-size:16px;font-weight:500;letter-spacing:0;line-height:1.4">${macBit} · ${msiBit} · ${phoneBit}</div>
+        <div class="sub">named parts only — not one continuous day clock</div>`;
+
+      const stacks = document.getElementById("stacks");
+      function stack(cls, title, hours, meta, nBlocks, reported) {
+        const empty = !nBlocks && hours === 0;
+        const blocks = Array.from({ length: Math.min(nBlocks || 0, 24) }, () => "<i></i>").join("");
+        const val = !hours ? "—" : (reported ? fmtH(hours) : ("≤ " + fmtH(hours)));
+        return `<div class="stack ${cls}${empty ? " empty" : ""}">
+          <div class="dev">${title}</div>
+          <div class="val">${val}</div>
+          <div class="meta">${meta}</div>
+          <div class="bars">${blocks}</div>
+        </div>`;
+      }
+      stacks.innerHTML =
+        stack("mac", "mac", mac.hours, mac.n ? `from ${mac.n} polls` : "no samples", mac.n, false) +
+        stack("msi", "msi", msi.hours, msi.n ? `from ${msi.n} polls` : "no samples", msi.n, false) +
+        stack("phone", "phone", ph, phone && ph ? "reported · usage access" : "waiting on writer", phone && ph ? Math.max(1, Math.round(ph * 4)) : 0, true);
+
+      // discrete contribution chart
+      const max = Math.max(mac.hours, msi.hours, ph, 0.01);
+      const contrib = document.getElementById("contrib");
+      contrib.innerHTML = `
+        <div class="h">breakdown</div>
+        <div class="contrib-row mac"><div>mac</div><div class="bar"><span style="width:${(mac.hours/max)*100}%"></span></div><div class="n">${mac.n ? "≤ "+fmtH(mac.hours) : "—"}</div></div>
+        <div class="contrib-row msi"><div>msi</div><div class="bar"><span style="width:${(msi.hours/max)*100}%"></span></div><div class="n">${msi.n ? "≤ "+fmtH(msi.hours) : "—"}</div></div>
+        <div class="contrib-row phone"><div>phone</div><div class="bar"><span style="width:${(ph/max)*100}%"></span></div><div class="n">${ph ? fmtH(ph) : "—"}</div></div>
+        <div class="sparse">discrete contribution · not a blended timeline</div>`;
+    }
+
+    function renderFilters(tagged) {
+      const el = document.getElementById("filters");
+      const sum = document.getElementById("filter-summary");
+      const apps = [...new Set(tagged.map((s) => s.app).filter(Boolean))].sort();
+      const phoneApps = (state.phone && state.phone.top) ? state.phone.top : [];
+      const appList = (!showSamples() && showPhonePanel()) ? phoneApps : apps;
+      const filtered = tagged.filter(matchSeg);
+
+      function btn(attr, val, label, cur) {
+        return `<button type="button" ${attr}="${val}" aria-pressed="${cur === val}">${label}</button>`;
+      }
+
+      let html = "";
+      html += `<div class="row"><div class="k">day</div><div class="v"><span style="color:var(--ink)">${humanDay(state.day)}</span> <span class="sep">·</span> ← → above</div></div>`;
+      html += `<div class="row"><div class="k">device</div><div class="v">`;
+      html += ["all","mac","msi","phone"].map((d) => btn("data-devf", d, d, state.deviceFilter)).join(" ");
+      html += `</div></div>`;
+      html += `<div class="row"><div class="k">source</div><div class="v">`;
+      html += btn("data-srcf", "all", "all", state.sourceFilter) + " ";
+      html += btn("data-srcf", "samples", "samples", state.sourceFilter) + " ";
+      html += btn("data-srcf", "phone", "phone reported", state.sourceFilter);
+      html += `</div></div>`;
+      html += `<div class="row"><div class="k">app</div><div class="v">`;
+      html += btn("data-appf", "", "all", state.app || "") + " ";
+      if (!appList.length) html += `<span class="sep">no apps in this slice</span>`;
+      else {
+        for (const app of appList.slice(0, 12)) {
+          const safe = String(app).replace(/"/g, "&quot;");
+          html += btn("data-appf", safe, app, state.app || "") + " ";
+        }
+      }
+      html += `</div></div>`;
+      const active = state.deviceFilter !== "all" || state.sourceFilter !== "all" || !!state.app;
+      html += `<div class="clear-row">${active ? `<button type="button" id="clear-filters">clear filters</button>` : `<span class="sep">showing full day</span>`}</div>`;
+      el.innerHTML = html;
+
+      if (sum) {
+        if (!showSamples() && showPhonePanel()) sum.textContent = "slice · phone reported only";
+        else if (showSamples() && !showPhonePanel()) sum.textContent = `slice · ${filtered.length} sample marks` + (state.app ? ` · ${state.app}` : "");
+        else sum.textContent = active ? `slice · ${filtered.length} marks` + (state.app ? ` · ${state.app}` : "") : "";
+      }
+
+      el.querySelectorAll("[data-devf]").forEach((b) => b.onclick = () => {
+        state.deviceFilter = b.getAttribute("data-devf");
+        if (state.deviceFilter === "phone") state.sourceFilter = "phone";
+        if ((state.deviceFilter === "mac" || state.deviceFilter === "msi") && state.sourceFilter === "phone") state.sourceFilter = "samples";
+        renderAll();
+      });
+      el.querySelectorAll("[data-srcf]").forEach((b) => b.onclick = () => {
+        state.sourceFilter = b.getAttribute("data-srcf");
+        if (state.sourceFilter === "samples" && state.deviceFilter === "phone") state.deviceFilter = "all";
+        renderAll();
+      });
+      el.querySelectorAll("[data-appf]").forEach((b) => b.onclick = () => {
+        const a = b.getAttribute("data-appf");
+        setApp(!a || state.app === a ? null : a);
+      });
+      const c = document.getElementById("clear-filters");
+      if (c) c.onclick = () => { state.deviceFilter = "all"; state.sourceFilter = "all"; state.app = null; renderAll(); };
+    }
+
+    function renderStrip(tagged, byDev) {
+      const el = document.getElementById("strip");
+      if (!tagged.length) {
+        el.innerHTML = `<div class="empty">no sample marks this day</div>`;
+        return;
+      }
+      const win = axisWindow(tagged);
+      const ticks = [];
+      const step = (win.end - win.start) <= 6 ? 1 : 2;
+      for (let h = win.start; h <= win.end; h += step) ticks.push(String(h).padStart(2, "0"));
+      function lane(key) {
+        const marks = (byDev[key] || []).map((s) => {
+          const left = Math.max(0, Math.min(100, pctIn(s.h, win.start, win.end)));
+          const dim = matchSeg(s) ? "" : " dimmed";
+          const sel = state.selectedId === s.id ? " selected" : "";
+          return `<div class="mark ${key}${dim}${sel}" style="left:calc(${left}% - 6px)" data-id="${s.id.replace(/"/g,"&quot;")}"></div>`;
+        }).join("");
+        return `<div class="lane ${key}"><div class="dev">${key}</div><div class="track">${marks}</div></div>`;
+      }
+      el.innerHTML = `
+        <div class="axis">${ticks.map((t) => `<span>${t}</span>`).join("")}</div>
+        ${lane("mac")}${lane("msi")}
+        ${tagged.length < 6 ? `<div class="sparse">sparse · ${tagged.length} marks · ruler cropped</div>` : ""}`;
+
+      const byId = new Map(tagged.map((s) => [s.id, s]));
+      el.querySelectorAll(".mark").forEach((node) => {
+        const s = byId.get(node.getAttribute("data-id"));
+        node.addEventListener("mouseenter", (e) => showCard(s, e.clientX, e.clientY));
+        node.addEventListener("mousemove", (e) => showCard(s, e.clientX, e.clientY));
+        node.addEventListener("mouseleave", () => showCard(null));
+        node.addEventListener("click", (e) => {
+          state.selectedId = state.selectedId === s.id ? null : s.id;
+          showCard(s, e.clientX, e.clientY);
+          renderStrip(tagged, byDev);
+        });
+      });
+    }
+
+    function renderPhone(phone) {
+      const el = document.getElementById("phone-body");
+      const tab = document.getElementById("tab-phone");
+      const show = !!(phone && phoneHours(phone));
+      tab.classList.toggle("hidden", !show);
+      tab.hidden = !show;
+      if (!show) {
+        if (state.view === "phone") state.view = "overview";
+        return;
+      }
+      const tops = phone.top || [];
+      let pkgs = phone.packages && Array.isArray(phone.packages) ? phone.packages
+        : tops.map((name, i) => ({ name, minutes: null, rank: i }));
+      if (state.app) pkgs = pkgs.filter((p) => (p.name || p) === state.app);
+      if (!pkgs.length) {
+        el.innerHTML = `<div class="empty">reported ${fmtH(phoneHours(phone))} · no package list yet</div>`;
+        return;
+      }
+      el.innerHTML = `<div class="sparse" style="margin-bottom:12px">reported ${fmtH(phoneHours(phone))} · usage access aggregates · not sampled attention</div>` +
+        pkgs.map((p) => {
+          const name = p.name || p;
+          const mins = p.minutes != null ? p.minutes : null;
+          const blocks = Array.from({ length: mins != null ? Math.min(24, Math.max(1, Math.round(mins / 5))) : Math.max(1, 8 - (p.rank || 0)) }, () => "<i></i>").join("");
+          return `<div class="pkg">
+            <div><div class="name">${name}</div><div class="blocks">${blocks}</div></div>
+            <div class="dur">${mins != null ? mins + "m" : "—"}</div>
+          </div>`;
+        }).join("");
+    }
+
+    function setView(v) {
+      state.view = v;
+      document.getElementById("tab-overview").setAttribute("aria-pressed", v === "overview" ? "true" : "false");
+      document.getElementById("tab-phone").setAttribute("aria-pressed", v === "phone" ? "true" : "false");
+      document.getElementById("view-marks").classList.toggle("hidden", v !== "overview");
+      document.getElementById("view-phone").classList.toggle("hidden", v !== "phone");
+    }
+
+    function renderAll() {
+      renderDayPicker();
+      const tagged = taggedSamples(samplesForDay(state.day));
+      const filtered = tagged.filter(matchSeg);
+      const byDev = buildByDev(filtered);
+      const phone = showPhonePanel() ? state.phone : null;
+      const phoneForHero = showPhonePanel() ? state.phone : null;
+      renderHero(byDev, phoneForHero, tagged);
+      renderFilters(tagged);
+      if (showSamples()) {
+        document.getElementById("view-marks").classList.remove("hidden");
+        renderStrip(filtered, byDev);
+      } else {
+        document.getElementById("strip").innerHTML = `<div class="empty">samples hidden by source filter</div>`;
+      }
+      renderPhone(phone);
+      if (!showSamples() && phone && phoneHours(phone)) state.view = "phone";
+      else if (state.view === "phone" && !(phone && phoneHours(phone))) state.view = "overview";
+      setView(state.view === "phone" && phone && phoneHours(phone) ? "phone" : "overview");
+    }
+
+    document.getElementById("tab-overview").onclick = () => { state.view = "overview"; renderAll(); };
+    document.getElementById("tab-phone").onclick = () => { state.view = "phone"; renderAll(); };
+    window.addEventListener("keydown", (e) => {
+      if (e.key === "Escape") { state.selectedId = null; state.app = null; state.deviceFilter = "all"; state.sourceFilter = "all"; showCard(null); renderAll(); }
+      if (e.key === "ArrowLeft") shiftDay(-1);
+      if (e.key === "ArrowRight") shiftDay(1);
+    });
+
+    async function load() {
+      let samples = [];
+      try {
+        const metaRes = await fetch("./data.json", { cache: "no-store" });
+        if (metaRes.ok) {
+          const meta = await metaRes.json();
+          if (Array.isArray(meta.samples)) samples = meta.samples;
+          if (meta.sentences) state.sentences = meta.sentences;
+          if (meta.phones) state.phones = meta.phones;
+          if (meta.phone) {
+            const pd = (meta.phone.day && String(meta.phone.day).slice(0, 10)) || null;
+            if (pd) state.phones[pd] = Object.assign({}, meta.phone, { day: pd });
+          }
+          if (Array.isArray(meta.days)) state._metaDays = meta.days.filter(Boolean);
+          if (meta.day && meta.sentence) state.sentences[meta.day] = meta.sentence;
+          if (meta.lastUpdated) {
+            const lu = document.getElementById("last-updated");
+            if (lu) lu.textContent = "updated · " + meta.lastUpdated;
+          }
+        }
+      } catch (_) {}
+      if (!samples.length) {
+        try {
+          const tsv = await fetch("./foreground-samples.tsv", { cache: "no-store" });
+          if (tsv.ok) samples = parseTSV(await tsv.text());
+        } catch (_) {}
+      }
+      state.allSamples = samples;
+      const daySet = new Set();
+      for (const s of samples) { const d = dayKeyFromTs(s.ts); if (d) daySet.add(d); }
+      try {
+        const pr = await fetch("./phone-reported.tsv", { cache: "no-store" });
+        if (pr.ok) {
+          for (const line of (await pr.text()).trim().split(/\n+/).filter(Boolean)) {
+            if (line.startsWith("#")) continue;
+            const parts = line.split("\t");
+            const day = (parts[0] || "").slice(0, 10);
+            if (!/^\d{4}-\d{2}-\d{2}$/.test(day)) continue;
+            const fields = Object.fromEntries(
+              parts.slice(2).map((p) => {
+                const i = p.indexOf("=");
+                return i === -1 ? [p, true] : [p.slice(0, i), p.slice(i + 1)];
+              })
+            );
+            // legacy columns: day\thours\ttops\tswitches
+            let hours = fields.hours;
+            let tops = fields.top || "";
+            let switches = fields.switches != null ? fields.switches : null;
+            if (hours == null && parts[1] && parts[1] !== "reported") {
+              hours = parts[1];
+              tops = parts[2] || "";
+              switches = parts[3] || null;
+            }
+            if (hours == null || hours === "") continue;
+            let packages = null;
+            if (fields.packages) { try { packages = JSON.parse(fields.packages); } catch (_) {} }
+            else if (parts[4]) { try { packages = JSON.parse(parts[4]); } catch (_) {} }
+            state.phones[day] = {
+              hours,
+              top: String(tops).split(",").map((s) => s.trim()).filter(Boolean),
+              switches,
+              packages,
+              day,
+            };
+            daySet.add(day);
+          }
+        }
+      } catch (_) {}
+      if (Array.isArray(state._metaDays)) for (const d of state._metaDays) daySet.add(d);
+      delete state._metaDays;
+      state.days = [...daySet].sort();
+      if (!state.days.length) {
+        state.days = [new Date().toLocaleDateString("en-CA", { timeZone: "Asia/Kolkata" })];
+      }
+      state.day = state.days[state.days.length - 1];
+      state.phone = state.phones[state.day] || null;
+      renderAll();
+    }
+    load();
+  </script>
+</body>
+</html>
