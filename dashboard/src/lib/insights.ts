@@ -18,6 +18,7 @@ import {
   phoneMinutes,
   switches,
 } from "./metrics";
+import { lagSeconds, prettyLag } from "./freshness";
 import type { Insight, PhoneReport, Sample, Slice } from "./types";
 import { applyPhoneSlice, applySampleSlice, sliceActive } from "./filters";
 
@@ -36,11 +37,13 @@ export function generateInsights(
   dayPhone: PhoneReport | null,
   slice: Slice,
   daysInView: string[],
+  freshness?: { now?: number; lastEvent?: string | null },
 ): Insight[] {
   const samples = applySampleSlice(daySamples, slice);
   const phone = applyPhoneSlice(dayPhone, slice);
   const out: Insight[] = [];
   const sliced = sliceActive(slice);
+  const now = freshness?.now ?? Date.now();
 
   if (sliced && !samples.length && !phone) {
     out.push({
@@ -50,6 +53,19 @@ export function generateInsights(
       detail: "Clear a filter, or pick another hour / app / device. Marks that went dim still happened — they just sit outside this slice.",
     });
     return out;
+  }
+
+  if (!sliced && freshness?.lastEvent) {
+    const lag = lagSeconds(freshness.lastEvent, now);
+    if (lag != null && lag >= 36 * 3600) {
+      out.push({
+        id: "stale-log",
+        kicker: "freshness",
+        title: `Newest look was ${prettyLag(freshness.lastEvent, now)}.`,
+        detail:
+          "The hero number is estimated from the last looks that exist, not a live meter. Computers only move when a collector polls. Phone is a Writer day-summary. Blanks after the last look are missing, not zero use.",
+      });
+    }
   }
 
   if (!sliced && daysInView.length > 1) {
@@ -262,5 +278,5 @@ export function generateInsights(
     if (seen.has(row.id)) return false;
     seen.add(row.id);
     return true;
-  }).slice(0, 7);
+  }).slice(0, 8);
 }
