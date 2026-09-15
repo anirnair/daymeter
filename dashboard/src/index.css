@@ -583,6 +583,28 @@ number-flow-react {
 
 .foot-sep { color: var(--mute); }
 
+.fresh {
+  color: var(--dim);
+  text-align: center;
+  max-width: 100%;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  column-gap: 0;
+  row-gap: 0;
+}
+
+.fresh-item {
+  white-space: nowrap;
+}
+
+.fresh-item + .fresh-item::before {
+  content: " · ";
+  color: var(--mute);
+}
+
+.fresh-src.on { color: var(--msi); }
+
 .tool-row,
 .phone-app {
   position: relative;
