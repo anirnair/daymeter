@@ -20,13 +20,18 @@ import urllib.error
 import urllib.request
 
 FG = re.compile(
-    r"MOVE_TO_FOREGROUND|ACTIVITY_RESUMED|ACTIVITY_STARTED|(?:^|[^\d])type=1(?:[^\d]|$)",
+    r"MOVE_TO_FOREGROUND|ACTIVITY_RESUMED|ACTIVITY_STARTED|(?:^|[^\d])type=(?:1|23)(?:[^\d]|$)",
     re.I,
 )
 BG = re.compile(
-    r"MOVE_TO_BACKGROUND|ACTIVITY_PAUSED|ACTIVITY_STOPPED|ACTIVITY_DESTROYED|(?:^|[^\d])type=(?:2|23|24)(?:[^\d]|$)",
+    r"MOVE_TO_BACKGROUND|ACTIVITY_PAUSED|ACTIVITY_STOPPED|ACTIVITY_DESTROYED|(?:^|[^\d])type=(?:2|24)(?:[^\d]|$)",
     re.I,
 )
+OFF = re.compile(
+    r"SCREEN_NON_INTERACTIVE|KEYGUARD_SHOWN|(?:^|[^\d])type=(?:16|17)(?:[^\d]|$)",
+    re.I,
+)
+TYPE = re.compile(r"(?:^|[^\d])type=(\d+)(?:[^\d]|$)", re.I)
 ISO = re.compile(r"(\d{4}-\d{2}-\d{2})[ T](\d{2}:\d{2}:\d{2})")
 NUMBERED = re.compile(r"(\d{1,2})-(\d{1,2})-(\d{4})[ T](\d{2}:\d{2}:\d{2})")
 EPOCH = re.compile(r"""\btime[=:]?\s*["']?(\d{12,13})\b""")
@@ -74,10 +79,21 @@ def pkg(line: str) -> str | None:
 
 
 def kind(line: str) -> str | None:
-    if BG.search(line):
-        return "bg"
+    typed = TYPE.search(line)
+    if typed:
+        n = int(typed.group(1))
+        if n in (1, 23):
+            return "fg"
+        if n in (2, 24, 25, 26):
+            return "bg"
+        if n in (16, 17, 28):
+            return "off"
+    if OFF.search(line):
+        return "off"
     if FG.search(line):
         return "fg"
+    if BG.search(line):
+        return "bg"
     return None
 
 
@@ -92,41 +108,41 @@ def parse_dump(text: str) -> list[dict]:
     events: list[tuple[int, str, str, str]] = []
     for line in text.splitlines():
         k = kind(line)
-        app = pkg(line)
         ts = coerce_ts(line)
-        if not k or not app or not ts:
+        if not k or not ts:
+            continue
+        app = pkg(line) or ""
+        if k != "off" and not app:
             continue
         events.append((parse_ms(ts), ts, app, k))
     events.sort()
-    open_apps: dict[str, str] = {}
+    current: tuple[str, str] | None = None
     sessions: list[dict] = []
 
-    def close(app: str, end: str) -> None:
-        start = open_apps.pop(app, None)
-        if not start:
+    def close(end: str) -> None:
+        nonlocal current
+        if not current:
             return
+        start, app = current
+        current = None
         seconds = (parse_ms(end) - parse_ms(start)) / 1000
         if seconds <= 0:
             return
-        sessions.append(
-            {
-                "ts": start,
-                "end": end,
-                "app": app,
-                "seconds": seconds,
-            }
-        )
+        sessions.append({"ts": start, "end": end, "app": app, "seconds": seconds})
 
     for _ms, ts, app, k in events:
+        if k == "off":
+            close(ts)
+            continue
         if k == "fg":
-            for other in list(open_apps):
-                if other != app:
-                    close(other, ts)
-            if app in open_apps:
-                close(app, ts)
-            open_apps[app] = ts
-        else:
-            close(app, ts)
+            if current and current[1] != app:
+                close(ts)
+            elif current and current[1] == app:
+                continue
+            current = (ts, app)
+            continue
+        if current and (current[1] == app or not app):
+            close(ts)
     return sessions
 
 

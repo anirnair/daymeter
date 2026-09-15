@@ -40,6 +40,40 @@ describe("ingest parse", () => {
     expect(sessions.samples[1]?.seconds).toBe(20);
   });
 
+  it("keeps Writer activity class names on timed sessions", () => {
+    const parsed = parseIngestBody(
+      JSON.stringify({
+        device: "phone",
+        day: "2026-09-15",
+        hours: 0.02,
+        top: ["com.whatsapp"],
+        sessions: [
+          {
+            ts: "2026-09-15T09:00:00+0530",
+            end: "2026-09-15T09:01:12+0530",
+            app: "com.whatsapp",
+            seconds: 72,
+            className: "com.whatsapp.HomeActivity",
+          },
+        ],
+      }),
+    );
+    expect(parsed.samples[0]?.className).toBe("com.whatsapp.HomeActivity");
+    expect(parsed.phones[0]?.hours).toBe(0.02);
+  });
+
+  it("treats ACTIVITY_RESUMED type=23 as foreground, not background", () => {
+    const dump = `
+  09-15-2026 09:00:00.000: com.whatsapp/com.whatsapp.HomeActivity type=23
+  09-15-2026 09:02:00.000: com.whatsapp/com.whatsapp.HomeActivity type=24
+`;
+    const parsed = parseIngestBody(dump);
+    expect(parsed.samples).toHaveLength(1);
+    expect(parsed.samples[0]?.app).toBe("com.whatsapp");
+    expect(parsed.samples[0]?.seconds).toBe(120);
+    expect(parsed.samples[0]?.className).toBe("com.whatsapp.HomeActivity");
+  });
+
   it("turns dumpsys UsageEvents into timed phone sessions without inventing a trailing open app", () => {
     const dump = `
 Usage events for user 0:
@@ -55,6 +89,7 @@ Usage events for user 0:
       app: "com.whatsapp",
       device: "phone",
       seconds: 40,
+      className: "com.whatsapp.HomeActivity",
     });
     expect(parsed.samples[1]?.app).toBe("com.instagram.android");
     expect(parsed.samples[1]?.seconds).toBe(20);

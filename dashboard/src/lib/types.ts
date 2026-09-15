@@ -15,6 +15,7 @@ export type RawSample = {
   bundle?: string;
   end?: string;
   seconds?: number;
+  className?: string;
 };
 
 export type Sample = RawSample & {

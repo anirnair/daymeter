@@ -10,7 +10,7 @@ export async function OPTIONS() {
     headers: {
       "Access-Control-Allow-Origin": "*",
       "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
-      "Access-Control-Allow-Headers": "Content-Type, x-daymeter-token, Authorization",
+      "Access-Control-Allow-Headers": "Content-Type, x-daymeter-token, x-daymeter-secret, Authorization",
     },
   });
 }

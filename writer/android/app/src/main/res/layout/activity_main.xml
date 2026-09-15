@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    android:padding="20dp">
+
+    <TextView
+        android:id="@+id/status"
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1"
+        android:fontFamily="monospace"
+        android:textSize="14sp" />
+
+    <Button
+        android:id="@+id/btn_open_usage"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="@string/open_usage" />
+
+    <Button
+        android:id="@+id/btn_write_now"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="@string/write_now" />
+
+    <Button
+        android:id="@+id/btn_backfill"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="@string/backfill" />
+</LinearLayout>

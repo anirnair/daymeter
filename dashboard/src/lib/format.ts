@@ -132,11 +132,18 @@ export function deviceKey(name: string): DeviceKey {
   return "mac";
 }
 
-export function sampleDetail(sample: { title?: string; url?: string; bundle?: string; explicit: boolean }): string {
+export function sampleDetail(sample: {
+  title?: string;
+  url?: string;
+  bundle?: string;
+  className?: string;
+  explicit: boolean;
+}): string {
   const bits: string[] = [];
   if (sample.title) bits.push(sample.title);
   if (sample.url) bits.push(sample.url.replace(/^https?:\/\//, "").replace(/\/$/, ""));
   if (sample.bundle && sample.bundle !== sample.title) bits.push(sample.bundle);
+  if (sample.className) bits.push(sample.className);
   bits.push(sample.explicit ? "timed session" : "estimated stretch");
   return bits.join(" · ");
 }

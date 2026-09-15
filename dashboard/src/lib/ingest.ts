@@ -134,9 +134,11 @@ function rawFromUnknown(row: Record<string, unknown>, fallbackDevice?: string): 
   const title = asString(row.title ?? row.window ?? row.heading);
   const url = asString(row.url ?? row.href ?? row.uri);
   const bundle = asString(row.bundle ?? row.bundleId ?? row.package);
+  const className = asString(row.className ?? row.activity ?? row.component);
   if (title) sample.title = title;
   if (url) sample.url = url;
   if (bundle) sample.bundle = bundle;
+  if (className) sample.className = className;
   if (end) sample.end = end;
   if (seconds != null && seconds > 0) sample.seconds = seconds;
   return sample;
@@ -262,12 +264,13 @@ function parseForm(text: string): ParsedIngest {
 }
 
 const DUMPSYS_FG =
-  /MOVE_TO_FOREGROUND|ACTIVITY_RESUMED|ACTIVITY_STARTED|(?:^|[^\d])type=1(?:[^\d]|$)/i;
+  /MOVE_TO_FOREGROUND|ACTIVITY_RESUMED|ACTIVITY_STARTED|(?:^|[^\d])type=(?:1|23)(?:[^\d]|$)/i;
 const DUMPSYS_BG =
-  /MOVE_TO_BACKGROUND|ACTIVITY_PAUSED|ACTIVITY_STOPPED|ACTIVITY_DESTROYED|(?:^|[^\d])type=(?:2|23|24)(?:[^\d]|$)/i;
+  /MOVE_TO_BACKGROUND|ACTIVITY_PAUSED|ACTIVITY_STOPPED|ACTIVITY_DESTROYED|(?:^|[^\d])type=(?:2|24)(?:[^\d]|$)/i;
+const DUMPSYS_OFF = /SCREEN_NON_INTERACTIVE|KEYGUARD_SHOWN|(?:^|[^\d])type=(?:16|17)(?:[^\d]|$)/i;
 
 export function looksLikeDumpsys(text: string): boolean {
-  return /MOVE_TO_FOREGROUND|ACTIVITY_RESUMED|Usage events|dumpsys usagestats|MOVE_TO_BACKGROUND/i.test(
+  return /MOVE_TO_FOREGROUND|ACTIVITY_RESUMED|ACTIVITY_PAUSED|Usage events|dumpsys usagestats|MOVE_TO_BACKGROUND|(?:^|[^\d])type=(?:1|2|16|17|23|24|25|26)(?:[^\d]|$)/i.test(
     text,
   );
 }
@@ -297,6 +300,11 @@ function dumpsysTs(line: string): string | null {
   return null;
 }
 
+function dumpsysClass(line: string): string | null {
+  const slash = line.match(/\b[a-z][A-Za-z0-9_]*(?:\.[A-Za-z0-9_]+)+\/([A-Za-z][A-Za-z0-9._$]+)/);
+  return slash?.[1] ?? null;
+}
+
 function dumpsysPackage(line: string): string | null {
   const named = line.match(/\bpackage[=:]?\s*["']?([A-Za-z][A-Za-z0-9._]+)/);
   if (named) return named[1];
@@ -305,16 +313,24 @@ function dumpsysPackage(line: string): string | null {
   return null;
 }
 
-function dumpsysKind(line: string): "fg" | "bg" | null {
-  if (DUMPSYS_BG.test(line)) return "bg";
+function dumpsysKind(line: string): "fg" | "bg" | "off" | null {
+  const typed = line.match(/(?:^|[^\d])type=(\d+)(?:[^\d]|$)/i);
+  if (typed) {
+    const n = Number(typed[1]);
+    if (n === 1 || n === 23) return "fg";
+    if (n === 2 || n === 24 || n === 25 || n === 26) return "bg";
+    if (n === 16 || n === 17 || n === 28) return "off";
+  }
+  if (DUMPSYS_OFF.test(line)) return "off";
   if (DUMPSYS_FG.test(line)) return "fg";
+  if (DUMPSYS_BG.test(line)) return "bg";
   return null;
 }
 
-function sessionSample(app: string, start: string, end: string): RawSample | null {
+function sessionSample(app: string, start: string, end: string, className?: string): RawSample | null {
   const seconds = (parseIso(end) - parseIso(start)) / 1000;
   if (!Number.isFinite(seconds) || seconds <= 0) return null;
-  return {
+  const sample: RawSample = {
     ts: start,
     end,
     device: "phone",
@@ -322,44 +338,53 @@ function sessionSample(app: string, start: string, end: string): RawSample | nul
     seconds,
     bundle: app,
   };
+  if (className) sample.className = className;
+  return sample;
 }
 
 export function parseDumpsys(text: string): ParsedIngest {
-  type Ev = { ts: string; ms: number; app: string; kind: "fg" | "bg" };
+  type Ev = { ts: string; ms: number; app: string; kind: "fg" | "bg" | "off"; className?: string };
   const events: Ev[] = [];
   for (const line of text.split(/\r?\n/)) {
     const kind = dumpsysKind(line);
     if (!kind) continue;
-    const app = dumpsysPackage(line);
     const ts = dumpsysTs(line);
-    if (!app || !ts) continue;
+    if (!ts) continue;
     const ms = parseIso(ts);
     if (!Number.isFinite(ms)) continue;
-    events.push({ ts, ms, app, kind });
+    if (kind === "off") {
+      events.push({ ts, ms, app: "", kind });
+      continue;
+    }
+    const app = dumpsysPackage(line);
+    if (!app) continue;
+    const className = dumpsysClass(line) ?? undefined;
+    events.push({ ts, ms, app, kind, className });
   }
   events.sort((a, b) => a.ms - b.ms || a.kind.localeCompare(b.kind));
 
-  const open = new Map<string, string>();
+  let current: { app: string; ts: string; className?: string } | null = null;
   const samples: RawSample[] = [];
 
-  const close = (app: string, end: string) => {
-    const start = open.get(app);
-    if (!start) return;
-    open.delete(app);
-    const sample = sessionSample(app, start, end);
+  const close = (end: string) => {
+    if (!current) return;
+    const sample = sessionSample(current.app, current.ts, end, current.className);
+    current = null;
     if (sample) samples.push(sample);
   };
 
   for (const ev of events) {
-    if (ev.kind === "fg") {
-      for (const app of [...open.keys()]) {
-        if (app !== ev.app) close(app, ev.ts);
-      }
-      if (open.has(ev.app)) close(ev.app, ev.ts);
-      open.set(ev.app, ev.ts);
-    } else {
-      close(ev.app, ev.ts);
+    if (ev.kind === "off") {
+      close(ev.ts);
+      continue;
     }
+    if (ev.kind === "fg") {
+      if (current && current.app !== ev.app) close(ev.ts);
+      else if (current && current.app === ev.app) continue;
+      current = { app: ev.app, ts: ev.ts, className: ev.className };
+      continue;
+    }
+    if (current && (current.app === ev.app || !ev.app)) close(ev.ts);
   }
 
   return { samples, phones: [] };

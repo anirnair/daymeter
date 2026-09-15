@@ -7,40 +7,50 @@ Production:
 ```
 POST https://daymeter.vercel.app/api/ingest
 Header: x-daymeter-token: $DAYMETER_INGEST_TOKEN
+    (Writer also sends x-daymeter-secret / Bearer with the APK secret)
 ```
 
 Local Vite writes `dashboard/.data/live.json` (gitignored). Token is optional unless `DAYMETER_INGEST_TOKEN` is set.
 
-## Computer look
+## Computer look (Mac / MSI)
+
+Each poll remembers the previous look and POSTs it **closed** with `seconds` and `end` (capped at 180s idle). Idle ≥ 180s is not posted as screen time.
 
 ```json
 {
-  "ts": "2026-09-12T21:18:02+0530",
+  "ts": "2026-09-15T21:18:02+0530",
   "device": "mac",
   "app": "Google Chrome",
   "title": "Daymeter pull request",
   "url": "https://github.com/anirnair/daymeter",
-  "bundle": "com.google.Chrome"
+  "bundle": "com.google.Chrome",
+  "seconds": 58.2,
+  "end": "2026-09-15T21:19:00+0530"
 }
 ```
 
 `device` should be `mac`, `msi` / `windows`, or `phone` / `android`. IST offsets (`+0530`) match the existing log.
 
-## Phone — accurate, granular
+Mac also sends the frontmost bundle id, plus browser tab title/URL (Chrome, Brave, Edge, Safari, Arc, Firefox). MSI sends window title, optional URL from the process command line, and the exe path as `bundle`.
 
-Writer’s current dump is a **day-summary** (`hours`, `top`, `switches`). Keep sending that so the mix doesn’t go blank. It cannot sit on the hour grid.
+## Phone — timed sessions (Writer 1.2)
 
-For clocks, also POST sessions from Usage Access:
+Writer 1.2 POSTs UsageEvents sessions to live ingest **and** Origin. Keep the day-summary (`hours`, `top`, `switches`) so the mix doesn’t go blank when events are thin.
 
 ```json
 {
   "device": "phone",
+  "day": "2026-09-15",
+  "hours": 4.29,
+  "top": ["com.whatsapp", "com.instagram.android"],
+  "switches": 210,
   "sessions": [
     {
-      "ts": "2026-09-12T00:10:02+0530",
-      "end": "2026-09-12T00:10:42+0530",
+      "ts": "2026-09-15T00:10:02+0530",
+      "end": "2026-09-15T00:10:42+0530",
       "app": "com.whatsapp",
-      "seconds": 40
+      "seconds": 40,
+      "className": "com.whatsapp.HomeActivity"
     }
   ]
 }
@@ -48,7 +58,7 @@ For clocks, also POST sessions from Usage Access:
 
 Seconds win over gap estimates. Those looks get a Phone lane, hour cells, and per-app bars.
 
-Until Writer is retargeted, POST the same JSON from Termux / Tasker, or pipe UsageEvents:
+Until the upgraded APK is installed, POST the same JSON from Termux / Tasker, or pipe UsageEvents:
 
 ```bash
 adb shell dumpsys usagestats | python3 collectors/phone-dumpsys.py
@@ -57,19 +67,7 @@ adb shell dumpsys usagestats | curl -sS -X POST https://daymeter.vercel.app/api/
   -H "Content-Type: text/plain" --data-binary @-
 ```
 
-Foreground without a later pause is dropped — a gap is missing, not idle. The installed APK still talks to Origin dashboard 9 — leave that up. The dashboard pulls that Origin strip so the **reported** line stays current; POSTing sessions here is what puts Phone on the hour grid.
-
-Writer summary (still accepted):
-
-```json
-{
-  "device": "phone",
-  "day": "2026-09-12",
-  "hours": 0.28,
-  "top": ["com.whatsapp", "com.instagram.android"],
-  "switches": 126
-}
-```
+Foreground without a later pause is dropped in dumpsys (a gap is missing, not idle). Writer closes the still-open app at “now” so today is not empty.
 
 ## Mac
 
@@ -87,11 +85,11 @@ mkdir -p ~/Library/LaunchAgents
 launchctl load ~/Library/LaunchAgents/com.daymeter.mac.plist
 ```
 
-When Chrome, Safari, Arc, or Chromium is frontmost, the script also sends the front tab title and URL.
+State file: `~/.daymeter/last-look.json`.
 
 ## MSI / Windows
 
-Run `collectors/windows.ps1` every minute via Task Scheduler (hidden, at logon). It sends the foreground process and window title.
+Run `collectors/windows.ps1` every minute via Task Scheduler (hidden, at logon). State file: `%LOCALAPPDATA%\daymeter\last-look.json`.
 
 ## Honesty
 

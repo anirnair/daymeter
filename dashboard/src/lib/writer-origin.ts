@@ -44,8 +44,10 @@ async function fetchWriterLog(url: string, secret: string): Promise<string> {
     });
     if (!response.ok) return "";
     const text = await response.text();
-    if (!text.includes("hours=")) return "";
-    return text;
+    const trimmed = text.trim();
+    if (trimmed.startsWith("{") || trimmed.startsWith("[")) return trimmed;
+    if (text.includes("hours=")) return text;
+    return "";
   } catch {
     return "";
   } finally {
@@ -54,18 +56,28 @@ async function fetchWriterLog(url: string, secret: string): Promise<string> {
 }
 
 export function storeFromWriterTsv(tsv: string): LiveStore {
-  const parsed = parseIngestBody(tsv, "text/tab-separated-values");
+  return storeFromWriterBody(tsv);
+}
+
+export function storeFromWriterBody(body: string): LiveStore {
+  const trimmed = body.trim();
+  const json = trimmed.startsWith("{") || trimmed.startsWith("[");
+  const parsed = parseIngestBody(trimmed, json ? "application/json" : "text/tab-separated-values");
   const phones: LiveStore["phones"] = {};
   for (const phone of parsed.phones) {
     phones[phone.day] = mergePhoneReports(phones[phone.day], phone);
   }
-  const lastLine = tsv
-    .trim()
+  const lastLine = trimmed
     .split(/\n+/)
     .filter((line) => line.includes("hours="))
     .at(-1);
-  const lastTs = lastLine?.split("\t")[0] ?? null;
+  const lastTs =
+    lastLine?.split("\t")[0] ??
+    parsed.samples.at(-1)?.ts ??
+    parsed.phones.at(-1)?.day ??
+    null;
   const store = emptyLive();
+  store.samples = parsed.samples;
   store.phones = phones;
   store.devices = lastTs ? { phone: lastTs } : {};
   store.lastUpdated = lastTs;
@@ -79,13 +91,23 @@ export async function readWriterPhone(): Promise<LiveStore | null> {
   }
   const secret = writerPhoneSecret();
   const parts = await Promise.all(writerPhoneUrls().map((url) => fetchWriterLog(url, secret)));
-  const tsv = parts
-    .map((part) => part.trim())
-    .filter(Boolean)
-    .join("\n");
+  const bodies = parts.map((part) => part.trim()).filter(Boolean);
+  const tsv = bodies.join("\n");
   cache = { at: Date.now(), tsv };
-  if (!tsv) return null;
-  return storeFromWriterTsv(tsv);
+  if (!bodies.length) return null;
+  let merged = emptyLive();
+  for (const body of bodies) {
+    const next = storeFromWriterBody(body);
+    for (const sample of next.samples) merged.samples.push(sample);
+    for (const [day, phone] of Object.entries(next.phones)) {
+      merged.phones[day] = mergePhoneReports(merged.phones[day], phone);
+    }
+    const phoneStamp = newerStamp(merged.devices.phone, next.devices.phone);
+    if (phoneStamp) merged.devices.phone = phoneStamp;
+    merged.lastUpdated = newerStamp(merged.lastUpdated, next.lastUpdated);
+    merged.lastIngest = newerStamp(merged.lastIngest, next.lastIngest);
+  }
+  return merged;
 }
 
 export async function readWriterPhoneTsv(): Promise<string> {

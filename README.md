@@ -17,7 +17,7 @@ Those two don’t use numbered Origin session names, so they keep running when a
 
 The phone app that’s already installed still talks to the Origin strip at [daymeter-dashboard11.vercel.app](https://daymeter-dashboard11.vercel.app) (Writer send goes through take 9, then shows up there). Leave those up. Same download file also lives at [daymeter-writer-apk4.vercel.app](https://daymeter-writer-apk4.vercel.app).
 
-Phone install is sideload (not Play Store). The only permission it asks for is **Usage access** — Android’s “which apps did I use” setting. After install, open Writer and tap **Run once**. That first tap is what lets it send a day-summary to the strip.
+Phone install is sideload (not Play Store). The only permission it asks for is **Usage access** — Android’s “which apps did I use” setting. After install, open Writer and tap **Write + upload now**. Version **1.2** sends timed sessions (not only a day total) so Phone can sit on the hour grid.
 
 ---
 
@@ -47,8 +47,8 @@ GitHub `data.json` is a freeze. It goes stale the moment a collector POSTs somew
 
 Near-real-time (a few minutes lag is fine):
 
-1. **Mac and MSI** POST the frontmost app every 1–2 minutes to `https://daymeter.vercel.app/api/ingest` — scripts in [`collectors/`](collectors/README.md). When a browser is in front, Mac also sends the tab title and URL.
-2. **Phone** still sends a Writer *day-summary* (hours, top apps, switches) to Origin dashboard 9/11. The live page **pulls that Origin strip** on every refresh so the reported line stays current without retargeting the installed APK. For accurate grain, POST `sessions` with `ts`, `end`/`seconds`, and `app`, or pipe `adb shell dumpsys usagestats` through [`collectors/phone-dumpsys.py`](collectors/phone-dumpsys.py) so Phone can sit on the hour grid.
+1. **Mac and MSI** POST the frontmost app every 1–2 minutes to `https://daymeter.vercel.app/api/ingest` — scripts in [`collectors/`](collectors/README.md). Each poll closes the *previous* look with `seconds`/`end` (idle ≥ 3 minutes is not counted). When a browser is in front, Mac also sends the tab title, URL, and bundle id.
+2. **Phone Writer 1.2** posts timed UsageEvents sessions (`ts`, `end`, `seconds`, `app`, `className`) plus the day-summary to live ingest and Origin. Until that APK is installed, the page still **pulls Origin totals**, and you can pipe `adb shell dumpsys usagestats` through [`collectors/phone-dumpsys.py`](collectors/phone-dumpsys.py).
 3. The dashboard merges seed < Origin < live store. Production ingest writes Vercel Runtime Cache (Blob when `BLOB_READ_WRITE_TOKEN` exists). Local Vite writes `dashboard/.data/live.json`. It does not invent marks for the blanks. If `/api/live` is missing, the browser still pulls Origin directly (dashboard11 already allows CORS).
 
 The **behavior agent** (custom instructions in [`agent/INSTRUCTIONS.md`](agent/INSTRUCTIONS.md), Cursor agent in `.cursor/agents/daymeter-behavior.md`) re-reads the live log, checks collector freshness, and writes the second-order section. It never invents samples.

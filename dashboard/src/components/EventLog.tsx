@@ -16,7 +16,7 @@ export function EventLog({ samples, selectedId, onSelect, showDay }: Props) {
   const needle = q.trim().toLowerCase();
   const sorted = [...samples].sort((a, b) => a.ms - b.ms).filter((s) => {
     if (!needle) return true;
-    const hay = `${prettyClock(s.ts)} ${dayKey(s.ts) ?? ""} ${DEVICE_LABEL[s.key]} ${CLASS_LABEL[s.cls]} ${prettyApp(s.app)} ${s.app} ${s.title ?? ""} ${s.url ?? ""}`.toLowerCase();
+    const hay = `${prettyClock(s.ts)} ${dayKey(s.ts) ?? ""} ${DEVICE_LABEL[s.key]} ${CLASS_LABEL[s.cls]} ${prettyApp(s.app)} ${s.app} ${s.title ?? ""} ${s.url ?? ""} ${s.className ?? ""} ${s.bundle ?? ""}`.toLowerCase();
     return hay.includes(needle);
   });
 

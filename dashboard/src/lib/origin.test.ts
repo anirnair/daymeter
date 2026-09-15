@@ -97,6 +97,31 @@ describe("writer phone log", () => {
     expect(store.devices.phone).toContain("2026-09-14T00:32:48");
   });
 
+  it("reads timed sessions from a Writer JSON dump", () => {
+    const store = storeFromWriterTsv(
+      JSON.stringify({
+        device: "phone",
+        day: "2026-09-15",
+        hours: 1.5,
+        top: ["com.whatsapp"],
+        switches: 40,
+        sessions: [
+          {
+            ts: "2026-09-15T09:00:00+0530",
+            end: "2026-09-15T09:04:00+0530",
+            app: "com.whatsapp",
+            seconds: 240,
+            className: "com.whatsapp.HomeActivity",
+          },
+        ],
+      }),
+    );
+    expect(store.phones["2026-09-15"]?.hours).toBe(1.5);
+    expect(store.samples).toHaveLength(1);
+    expect(store.samples[0]?.className).toBe("com.whatsapp.HomeActivity");
+    expect(store.samples[0]?.seconds).toBe(240);
+  });
+
   it("keeps Writer 6.53h when public Origin still has 0.28h", () => {
     const origin = storeFromOriginPayload({
       data: DASHBOARD11_JSON,
