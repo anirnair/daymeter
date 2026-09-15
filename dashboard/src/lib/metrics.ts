@@ -15,6 +15,10 @@ export function estimateSampleMinutes(samples: Sample[]): Sample[] {
   for (const list of byDev.values()) {
     const sorted = [...list].sort((a, b) => a.ms - b.ms);
     for (let i = 0; i < sorted.length; i++) {
+      if (sorted[i].explicit) {
+        out.push(sorted[i]);
+        continue;
+      }
       let span = TAIL_MS;
       if (i < sorted.length - 1) {
         span = Math.min(MAX_GAP_MS, Math.max(60_000, sorted[i + 1].ms - sorted[i].ms));
@@ -99,7 +103,6 @@ export function sampleIndexOnDevice(samples: Sample[], sample: Sample): { index:
 export function overlapHalfHours(samples: Sample[]): Set<number> {
   const buckets = new Map<number, Set<DeviceKey>>();
   for (const s of samples) {
-    if (s.key !== "mac" && s.key !== "msi") continue;
     const b = halfHour(s.h);
     const set = buckets.get(b) ?? new Set<DeviceKey>();
     set.add(s.key);
@@ -107,7 +110,7 @@ export function overlapHalfHours(samples: Sample[]): Set<number> {
   }
   const both = new Set<number>();
   for (const [b, set] of buckets) {
-    if (set.has("mac") && set.has("msi")) both.add(b);
+    if (set.size >= 2) both.add(b);
   }
   return both;
 }
@@ -143,13 +146,20 @@ export function deviceHops(samples: Sample[]): { ts: string; from: DeviceKey; to
   return hops;
 }
 
-export function hourHistogram(samples: Sample[]): { hour: number; mac: number; msi: number; minutes: number }[] {
-  const map = new Map<number, { mac: number; msi: number; minutes: number }>();
+export function hourHistogram(samples: Sample[]): {
+  hour: number;
+  mac: number;
+  msi: number;
+  phone: number;
+  minutes: number;
+}[] {
+  const map = new Map<number, { mac: number; msi: number; phone: number; minutes: number }>();
   for (const s of samples) {
     const hour = Math.floor(s.h);
-    const cur = map.get(hour) ?? { mac: 0, msi: 0, minutes: 0 };
+    const cur = map.get(hour) ?? { mac: 0, msi: 0, phone: 0, minutes: 0 };
     if (s.key === "mac") cur.mac += 1;
     if (s.key === "msi") cur.msi += 1;
+    if (s.key === "phone") cur.phone += 1;
     cur.minutes += s.minutes;
     map.set(hour, cur);
   }
@@ -210,5 +220,6 @@ export function parsePhoneLine(line: string): PhoneReport | null {
     hours,
     top,
     switches: switches != null && Number.isFinite(switches) ? switches : null,
+    sampled: false,
   };
 }

@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { classifyApp } from "./classify";
+import { classifyIntent } from "./intent";
 import { applyPhoneSlice, applySampleSlice, EMPTY_SLICE } from "./filters";
 import { generateInsights } from "./insights";
 import { coincidences, estimateSampleMinutes, hourHistogram, overlapHalfHours } from "./metrics";
@@ -39,6 +40,7 @@ function samples(): Sample[] {
     id: `${row.ts}|${row.key}|${row.app}|${i}`,
     minutes: 5,
     cls: classifyApp(row.app),
+    explicit: false,
   }));
   return estimateSampleMinutes(list);
 }
@@ -54,6 +56,7 @@ describe("classify", () => {
     expect(classifyApp("com.whatsapp")).toBe("social");
     expect(classifyApp("in.swiggy.android")).toBe("food");
     expect(classifyApp("com.android.launcher")).toBe("system");
+    expect(classifyIntent("com.whatsapp")).toBe("consume");
   });
 });
 

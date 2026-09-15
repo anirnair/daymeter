@@ -18,6 +18,7 @@ import {
   phoneMinutes,
   switches,
 } from "./metrics";
+import { overlapStats } from "./clock";
 import type { Insight, PhoneReport, Sample, Slice } from "./types";
 import { applyPhoneSlice, applySampleSlice, sliceActive } from "./filters";
 
@@ -88,6 +89,25 @@ export function generateInsights(
     }
   }
 
+  const overlap = overlapStats(samples);
+  if (overlap.dual > 0.5 && !sliced) {
+    out.push({
+      id: "simultaneous",
+      kicker: "together",
+      title: `${prettyDuration(overlap.dual)} with two devices in front at once.`,
+      detail:
+        [
+          overlap.macMsi ? `Mac+MSI ${prettyDuration(overlap.macMsi)}.` : "",
+          overlap.macPhone ? `Mac+Phone ${prettyDuration(overlap.macPhone)}.` : "",
+          overlap.msiPhone ? `MSI+Phone ${prettyDuration(overlap.msiPhone)}.` : "",
+          overlap.triple ? `All three ${prettyDuration(overlap.triple)}.` : "",
+        ]
+          .filter(Boolean)
+          .join(" ") || "Overlapping stretches from estimated look windows, capped at 20 min.",
+      slice: { overlap: true },
+    });
+  }
+
   if (phone) {
     const phoneMin = phoneMinutes(phone);
     const phoneRate = Math.round(phoneJumpsPerHour(phone));
@@ -105,7 +125,9 @@ export function generateInsights(
         kicker: "phone",
         title: `${prettyDuration(phoneMin)} on phone, ${phone.switches} jumps — about every ${every}s (${phoneRate}/hr).`,
         detail:
-          `Writer reports a day-summary, not a clock for each app.${vs} ${mix ? `In the mix: ${mix}.` : ""} Phone time is not placed on the hour grid because we do not have hourly phone samples.`,
+          phone.sampled
+            ? `Those jumps are from timestamped phone sessions, so this line can sit on the hour grid.${vs} ${mix ? `In the mix: ${mix}.` : ""}`
+            : `Writer reports a day-summary, not a clock for each app.${vs} ${mix ? `In the mix: ${mix}.` : ""} Phone time is not placed on the hour grid until sessions arrive with start times.`,
         slice: { device: "phone" },
       });
     }
@@ -116,7 +138,9 @@ export function generateInsights(
       id: "phone-only",
       kicker: "phone",
       title: "This cut is phone-only. No Mac or MSI looks sit here.",
-      detail: "Phone is reported, not sampled. There is no minute-by-minute lane to draw.",
+      detail: phone.sampled
+        ? "Phone sessions are in the looks log. The Mac and MSI lanes are empty in this cut."
+        : "Phone is reported, not sampled. There is no minute-by-minute lane to draw until sessions include clocks.",
     });
   }
 

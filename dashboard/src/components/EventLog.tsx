@@ -16,7 +16,7 @@ export function EventLog({ samples, selectedId, onSelect, showDay }: Props) {
   const needle = q.trim().toLowerCase();
   const sorted = [...samples].sort((a, b) => a.ms - b.ms).filter((s) => {
     if (!needle) return true;
-    const hay = `${prettyClock(s.ts)} ${dayKey(s.ts) ?? ""} ${DEVICE_LABEL[s.key]} ${CLASS_LABEL[s.cls]} ${prettyApp(s.app)} ${s.app}`.toLowerCase();
+    const hay = `${prettyClock(s.ts)} ${dayKey(s.ts) ?? ""} ${DEVICE_LABEL[s.key]} ${CLASS_LABEL[s.cls]} ${prettyApp(s.app)} ${s.app} ${s.title ?? ""} ${s.url ?? ""} ${s.className ?? ""} ${s.bundle ?? ""}`.toLowerCase();
     return hay.includes(needle);
   });
 
@@ -34,7 +34,7 @@ export function EventLog({ samples, selectedId, onSelect, showDay }: Props) {
         />
       </label>
       {sorted.length === 0 ? (
-        <div className="empty">{samples.length ? "No looks match that find." : "No computer looks in this slice."}</div>
+        <div className="empty">{samples.length ? "No looks match that find." : "No looks in this slice."}</div>
       ) : (
         <div className="log" role="list">
           {sorted.map((s) => {
@@ -52,14 +52,18 @@ export function EventLog({ samples, selectedId, onSelect, showDay }: Props) {
                 {showDay ? <span className="d">{dayKey(s.ts)?.slice(5)}</span> : null}
                 <span className={clsx("dev", s.key)}>{DEVICE_LABEL[s.key]}</span>
                 <span className="cls">{CLASS_LABEL[s.cls]}</span>
-                <span className="name">{prettyApp(s.app)}</span>
-                <span className="n">est {prettyDuration(s.minutes)}</span>
+                <span className="name">
+                  {prettyApp(s.app)}
+                  {s.title ? ` · ${s.title}` : ""}
+                  {s.url ? ` · ${s.url.replace(/^https?:\/\//, "").replace(/\/$/, "")}` : ""}
+                </span>
+                <span className="n">{s.explicit ? prettyDuration(s.minutes) : `est ${prettyDuration(s.minutes)}`}</span>
               </button>
             );
           })}
         </div>
       )}
-      <div className="empty">est. stretch is the gap to the next look on that machine, capped at 20 min</div>
+      <div className="empty">est. stretch is the gap to the next look on that machine, capped at 20 min · timed sessions keep their own seconds</div>
     </section>
   );
 }

@@ -126,9 +126,26 @@ export function prettyApp(name: string): string {
 
 export function deviceKey(name: string): DeviceKey {
   const n = (name || "").toLowerCase();
-  if (n.includes("msi") || n.includes("windows")) return "msi";
+  if (n.includes("msi") || n.includes("windows") || n === "win") return "msi";
   if (n.includes("phone") || n.includes("android")) return "phone";
+  if (n === "mac" || n.includes("darwin") || n.includes("macbook")) return "mac";
   return "mac";
+}
+
+export function sampleDetail(sample: {
+  title?: string;
+  url?: string;
+  bundle?: string;
+  className?: string;
+  explicit: boolean;
+}): string {
+  const bits: string[] = [];
+  if (sample.title) bits.push(sample.title);
+  if (sample.url) bits.push(sample.url.replace(/^https?:\/\//, "").replace(/\/$/, ""));
+  if (sample.bundle && sample.bundle !== sample.title) bits.push(sample.bundle);
+  if (sample.className) bits.push(sample.className);
+  bits.push(sample.explicit ? "timed session" : "estimated stretch");
+  return bits.join(" · ");
 }
 
 export function prettyUpdated(iso: string | null): string {

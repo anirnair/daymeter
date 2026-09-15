@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Daymeter Writer</string>
+    <string name="open_usage">Open usage settings</string>
+    <string name="write_now">Write + upload now</string>
+    <string name="backfill">Write yesterday if missing</string>
+</resources>
