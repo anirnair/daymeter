@@ -677,7 +677,12 @@
       "ts": "2026-09-27T18:44:12+0530",
       "device": "Anirudh-Nair-K4TWXC6H51.local",
       "app": "Dia"
+    },
+    {
+      "ts": "2026-09-27T22:15:19+0530",
+      "device": "Anirudh-Nair-K4TWXC6H51.local",
+      "app": "Relayed"
     }
   ],
-  "lastUpdated": "2026-09-27T21:48:47+0530"
+  "lastUpdated": "2026-09-27T22:15:20+0530"
 }
