@@ -886,7 +886,12 @@
       "ts": "2026-10-01T19:53:34+0530",
       "device": "Anirudh-Nair-K4TWXC6H51.local",
       "app": "Dia"
+    },
+    {
+      "ts": "2026-10-01T20:13:31+0530",
+      "device": "Anirudh-Nair-K4TWXC6H51.local",
+      "app": "ChatGPT"
     }
   ],
-  "lastUpdated": "2026-10-01T19:53:52+0530"
+  "lastUpdated": "2026-10-01T20:13:37+0530"
 }
