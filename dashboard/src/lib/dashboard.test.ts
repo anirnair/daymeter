@@ -131,6 +131,15 @@ describe("insights", () => {
     expect(text).toMatch(/not collected/i);
   });
 
+  it("names how old the picture is when the newest look is past 36h", () => {
+    const rows = generateInsights(samples(), PHONE, EMPTY_SLICE, ["2026-09-11", "2026-09-12"], {
+      now: Date.parse("2026-09-15T12:30:00Z"),
+      lastEvent: "2026-09-12T00:22:51+05:30",
+    });
+    expect(rows[0]?.id).toBe("stale-log");
+    expect(rows[0]?.title).toMatch(/3d ago/);
+  });
+
   it("hour slice names the exact apps and clocks", () => {
     const rows = generateInsights(samples(), PHONE, slice({ hour: 22 }), ["2026-09-11"]);
     const text = rows.map((r) => `${r.title} ${r.detail}`).join("\n");
