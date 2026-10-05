@@ -1065,7 +1065,12 @@
       "ts": "2026-10-05T20:18:03+0530",
       "device": "Anirudh-Nair-K4TWXC6H51.local",
       "app": "Dia"
+    },
+    {
+      "ts": "2026-10-05T21:23:30+0530",
+      "device": "MSI",
+      "app": "chrome"
     }
   ],
-  "lastUpdated": "2026-10-05T20:49:41+0530"
+  "lastUpdated": "2026-10-05T21:23:32+0530"
 }
