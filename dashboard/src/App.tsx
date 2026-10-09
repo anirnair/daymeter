@@ -9,13 +9,14 @@ import { InsightBoard } from "./components/InsightBoard";
 import { HourMatrix } from "./components/HourMatrix";
 import { EventLog } from "./components/EventLog";
 import { Inspector } from "./components/Inspector";
+import { FreshnessBar } from "./components/Freshness";
 import { loadDaymeter } from "./lib/load";
+import { prettyLag } from "./lib/freshness";
 import {
   DEVICE_LABEL,
   prettyDate,
   prettyDateRange,
   prettyDuration,
-  prettyUpdated,
 } from "./lib/format";
 import {
   appMinutes,
@@ -53,12 +54,40 @@ export default function App() {
   const [slice, setSlice] = useState<Slice>(EMPTY_SLICE);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [animateHero, setAnimateHero] = useState(false);
+  const [now, setNow] = useState(() => Date.now());
+  const booted = useRef(false);
 
   useEffect(() => {
-    void loadDaymeter().then((loaded) => {
-      setData(loaded);
-      setDay(loaded.days.length > 1 ? "all" : loaded.days[0] ?? "all");
-    });
+    let stop = false;
+    async function tick() {
+      if (typeof document !== "undefined" && document.visibilityState === "hidden") return;
+      try {
+        const loaded = await loadDaymeter();
+        if (stop) return;
+        setData(loaded);
+        if (!booted.current) {
+          booted.current = true;
+          setDay(loaded.days.length > 1 ? "all" : loaded.days[0] ?? "all");
+        }
+      } catch (err) {
+        console.error(err);
+      }
+    }
+    void tick();
+    const poll = window.setInterval(tick, 90_000);
+    const clock = window.setInterval(() => setNow(Date.now()), 30_000);
+    const onVis = () => {
+      if (document.visibilityState === "visible") void tick();
+    };
+    document.addEventListener("visibilitychange", onVis);
+    window.addEventListener("focus", onVis);
+    return () => {
+      stop = true;
+      window.clearInterval(poll);
+      window.clearInterval(clock);
+      document.removeEventListener("visibilitychange", onVis);
+      window.removeEventListener("focus", onVis);
+    };
   }, []);
 
   const dayOrder = useMemo(() => {
@@ -155,7 +184,10 @@ export default function App() {
   const macLooks = daySamples.filter((s) => s.key === "mac").length;
   const msiLooks = daySamples.filter((s) => s.key === "msi").length;
   const daysInView = day === "all" ? data.days : [day];
-  const insights = generateInsights(daySamples, dayPhone, slice, daysInView);
+  const insights = generateInsights(daySamples, dayPhone, slice, daysInView, {
+    now,
+    lastEvent: data.freshness.lastEvent,
+  });
   const selected = daySamples.find((s) => s.id === selectedId) ?? viewSamples.find((s) => s.id === selectedId) ?? null;
   const showPhoneSection = Boolean(phone);
   const showStrip = daySamples.some((s) => s.key === "mac" || s.key === "msi") && slice.device !== "phone";
@@ -190,6 +222,8 @@ export default function App() {
         </button>
       </div>
 
+      <FreshnessBar freshness={data.freshness} now={now} />
+
       <DurationHero
         minutes={total}
         label={`${prettyDuration(total)} screen time`}
@@ -213,19 +247,25 @@ export default function App() {
             key: "mac",
             minutes: dayMacMin,
             available: macLooks > 0,
-            meta: macLooks ? `${macLooks} look${macLooks === 1 ? "" : "s"}` : "no looks",
+            meta: macLooks
+              ? `${macLooks} look${macLooks === 1 ? "" : "s"}${data.freshness.devices.mac ? ` · ${prettyLag(data.freshness.devices.mac, now)}` : ""}`
+              : "no looks",
           },
           {
             key: "msi",
             minutes: dayMsiMin,
             available: msiLooks > 0,
-            meta: msiLooks ? `${msiLooks} look${msiLooks === 1 ? "" : "s"}` : "no looks",
+            meta: msiLooks
+              ? `${msiLooks} look${msiLooks === 1 ? "" : "s"}${data.freshness.devices.msi ? ` · ${prettyLag(data.freshness.devices.msi, now)}` : ""}`
+              : "no looks",
           },
           {
             key: "phone",
             minutes: dayPhoneMin,
             available: Boolean(dayPhone),
-            meta: dayPhone?.switches != null ? `${dayPhone.switches} jumps` : dayPhone ? "reported" : "no report",
+            meta: dayPhone
+              ? `${dayPhone.switches != null ? `${dayPhone.switches} jumps` : "reported"}${data.freshness.devices.phone ? ` · ${prettyLag(data.freshness.devices.phone, now)}` : ""}`
+              : "no report",
           },
         ]}
       />
@@ -310,13 +350,11 @@ export default function App() {
         <div className="empty">Nothing on this day yet.</div>
       ) : null}
 
-      {data.lastUpdated ? (
-        <div className="foot">
-          Updated {prettyUpdated(data.lastUpdated)}
-          <span className="foot-sep"> · </span>
-          hard marks are real samples · phone is reported · blanks are missing polls
-        </div>
-      ) : null}
+      <div className="foot">
+        hard marks are real samples · phone is reported · blanks are missing polls
+        <span className="foot-sep"> · </span>
+        numbers are as of the last look, not this page load
+      </div>
     </div>
   );
 }

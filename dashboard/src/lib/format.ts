@@ -54,6 +54,12 @@ export function prettyDate(day: string): string {
   return `${d} ${MONTHS[m - 1]} ${y}`;
 }
 
+export function prettyDateShort(day: string): string {
+  const [y, m, d] = day.split("-").map(Number);
+  if (!y || !m || !d) return day;
+  return `${d} ${MONTHS[m - 1].slice(0, 3)}`;
+}
+
 export function prettyDateRange(days: string[]): string {
   if (!days.length) return "";
   if (days.length === 1) return prettyDate(days[0]);
@@ -136,5 +142,5 @@ export function prettyUpdated(iso: string | null): string {
   const day = dayKey(iso);
   const time = prettyTime(iso);
   if (!day || !time) return iso;
-  return `${prettyDate(day)}, ${time}`;
+  return `${prettyDateShort(day)}, ${time}`;
 }

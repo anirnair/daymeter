@@ -24,6 +24,19 @@ export type PhoneReport = {
   hours: number;
   top: string[];
   switches: number | null;
+  ts?: string | null;
+};
+
+export type FreshnessSource = "live" | "origin" | "seed";
+
+export type Freshness = {
+  source: FreshnessSource;
+  /** Epoch ms when this view was loaded or last polled. */
+  asOf: number;
+  /** Newest look or report among the devices. */
+  lastEvent: string | null;
+  lastUpdated: string | null;
+  devices: { mac: string | null; msi: string | null; phone: string | null };
 };
 
 export type DaymeterData = {
@@ -31,6 +44,7 @@ export type DaymeterData = {
   phones: Record<string, PhoneReport>;
   days: string[];
   lastUpdated: string | null;
+  freshness: Freshness;
 };
 
 export type Slice = {
