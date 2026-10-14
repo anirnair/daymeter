@@ -210,5 +210,6 @@ export function parsePhoneLine(line: string): PhoneReport | null {
     hours,
     top,
     switches: switches != null && Number.isFinite(switches) ? switches : null,
+    ts,
   };
 }
