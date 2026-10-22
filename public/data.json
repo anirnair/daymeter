@@ -32,15 +32,15 @@
   ],
   "sentence": null,
   "phone": {
-    "hours": 7.05,
+    "hours": 5.02,
     "top": [
-      "com.android.chrome",
-      "com.twitter.android",
       "com.instagram.android",
+      "com.twitter.android",
       "com.google.android.youtube",
-      "com.linkedin.android"
+      "com.google.android.apps.youtube.music",
+      "com.android.launcher"
     ],
-    "day": "2026-09-20"
+    "day": "2026-10-22"
   },
   "phones": {
     "2026-09-12": {
@@ -1244,5 +1244,5 @@
       "app": "Dia"
     }
   ],
-  "lastUpdated": "2026-10-21T14:14:40+0530"
+  "lastUpdated": "2026-10-22T09:19:40+0530"
 }
